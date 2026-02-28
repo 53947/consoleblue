@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { useLocation, Link } from "wouter";
 import { useAuth, useLogout } from "@/hooks/use-auth";
+import { BRAND_ASSETS } from "@/lib/assets";
 import NotificationBell from "@/components/NotificationBell";
 import { Button } from "@/components/ui/button";
 
@@ -34,13 +35,17 @@ export default function AppLayout({ children }: AppLayoutProps) {
           <div className="flex items-center justify-between h-14">
             {/* Left: Logo + Nav */}
             <div className="flex items-center gap-8">
-              <Link href="/" className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                  <span className="text-white text-sm font-bold">CB</span>
-                </div>
-                <span className="font-semibold text-gray-900 hidden sm:block">
-                  ConsoleBlue
-                </span>
+              <Link href="/" className="flex items-center">
+                <img
+                  src={BRAND_ASSETS.consoleblue.lockup}
+                  alt="console.blue"
+                  className="h-8 hidden sm:block"
+                />
+                <img
+                  src={BRAND_ASSETS.consoleblue.icon}
+                  alt="console.blue"
+                  className="h-8 w-8 sm:hidden"
+                />
               </Link>
 
               <nav className="flex items-center gap-1">
