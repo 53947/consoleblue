@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { eq, and, gt } from "drizzle-orm";
 import { randomBytes } from "crypto";
+import { Resend } from "resend";
 import {
   adminUsers,
   adminSessions,
@@ -249,10 +250,53 @@ export function createAuthRoutes(db: NodePgDatabase) {
         expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
       });
 
-      // TODO: Send email with reset link
-      // For now, log the token (dev only)
-      if (process.env.NODE_ENV !== "production") {
-        console.log(`[auth] Password reset token for ${email}: ${token}`);
+      // Build reset URL
+      const baseUrl =
+        process.env.FRONTEND_URL ||
+        (req.headers.origin || `${req.protocol}://${req.get("host")}`);
+      const resetUrl = `${baseUrl}/reset-password?token=${token}`;
+
+      // Send email via Resend
+      const resendKey = process.env.RESEND_API_KEY;
+      if (resendKey) {
+        try {
+          const resend = new Resend(resendKey);
+          await resend.emails.send({
+            from: process.env.EMAIL_FROM || "Console.Blue <noreply@triadblue.com>",
+            to: email,
+            subject: "Reset your Console.Blue password",
+            html: `
+              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 20px;">
+                <div style="text-align: center; margin-bottom: 32px;">
+                  <span style="font-size: 24px; font-weight: bold;">
+                    <span style="color: #FF44CC;">Console.</span><span style="color: #0000FF;">Blue</span>
+                  </span>
+                </div>
+                <h2 style="color: #111; font-size: 20px; margin-bottom: 16px;">Reset your password</h2>
+                <p style="color: #555; line-height: 1.6;">
+                  Click the button below to reset your password. This link expires in 1 hour.
+                </p>
+                <div style="text-align: center; margin: 32px 0;">
+                  <a href="${resetUrl}" style="background-color: #0000FF; color: white; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: 600; display: inline-block;">
+                    Reset Password
+                  </a>
+                </div>
+                <p style="color: #999; font-size: 13px; line-height: 1.5;">
+                  If you didn't request this, you can ignore this email. The link will expire on its own.
+                </p>
+                <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0;" />
+                <p style="color: #bbb; font-size: 12px; text-align: center;">
+                  Console.Blue — Project Management Hub
+                </p>
+              </div>
+            `,
+          });
+          console.log(`[auth] Password reset email sent to ${email}`);
+        } catch (emailErr) {
+          console.error("[auth] Failed to send reset email:", emailErr);
+        }
+      } else {
+        console.log(`[auth] No RESEND_API_KEY — reset token for ${email}: ${token}`);
       }
 
       res.json({ success: true, message: successMsg });

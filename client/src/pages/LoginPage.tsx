@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { useLogin } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,6 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
-  const [showForgot, setShowForgot] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -110,13 +109,12 @@ export default function LoginPage() {
                   Remember me for 7 days
                 </Label>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowForgot(!showForgot)}
+              <Link
+                href="/forgot-password"
                 className="text-sm text-blue-600 hover:underline"
               >
                 Forgot password?
-              </button>
+              </Link>
             </div>
 
             <Button
@@ -128,15 +126,6 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          {showForgot && (
-            <div className="mt-4 p-3 bg-gray-50 rounded-md border text-sm text-gray-600 space-y-2">
-              <p className="font-medium text-gray-900">Reset your password</p>
-              <p>Run this in the Replit shell:</p>
-              <code className="block bg-white p-2 rounded border text-xs font-mono break-all">
-                npx tsx server/scripts/reset-password.ts your@email.com newpassword
-              </code>
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>
