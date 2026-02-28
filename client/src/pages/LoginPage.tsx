@@ -4,7 +4,8 @@ import { useLogin } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { BRAND_ASSETS } from "@/lib/assets";
 
 export default function LoginPage() {
   const [, navigate] = useLocation();
@@ -32,10 +33,15 @@ export default function LoginPage() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 w-16 h-16 bg-blue-600 rounded-xl flex items-center justify-center">
-            <span className="text-white text-2xl font-bold">CB</span>
-          </div>
-          <CardTitle className="text-2xl">ConsoleBlue</CardTitle>
+          <img
+            src={BRAND_ASSETS.consoleblue.icon}
+            alt=""
+            className="mx-auto mb-4 w-16 h-16"
+          />
+          <h1 className="text-2xl font-bold">
+            <span style={{ color: "#FF44CC" }}>Console.</span>
+            <span style={{ color: "#0000FF" }}>Blue</span>
+          </h1>
           <p className="text-sm text-muted-foreground mt-1">
             Sign in to your project management hub
           </p>
