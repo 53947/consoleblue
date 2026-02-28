@@ -15,6 +15,16 @@ export function createAuthRoutes(db: NodePgDatabase) {
 
   console.log(`[auth] Routes registered. RESEND_API_KEY: ${process.env.RESEND_API_KEY ? "SET" : "NOT SET"}`);
 
+  // Startup: list admin users so we know what's in the DB
+  (async () => {
+    try {
+      const result = await db.select({ id: adminUsers.id, email: adminUsers.email, isActive: adminUsers.isActive }).from(adminUsers);
+      console.log(`[auth] Admin users in DB:`, result.map(u => `${u.id}:${u.email}(active=${u.isActive})`).join(", ") || "NONE");
+    } catch (e) {
+      console.error(`[auth] Failed to list admin users:`, e);
+    }
+  })();
+
   // Helper: send magic login link via Resend
   async function sendMagicLink(email: string, loginUrl: string) {
     const resendKey = process.env.RESEND_API_KEY;
@@ -69,11 +79,19 @@ export function createAuthRoutes(db: NodePgDatabase) {
         return res.json({ success: true, message: successMsg });
       }
 
-      const [user] = await db
-        .select()
-        .from(adminUsers)
-        .where(eq(adminUsers.email, email.toLowerCase()))
-        .limit(1);
+      let user;
+      try {
+        const results = await db
+          .select()
+          .from(adminUsers)
+          .where(eq(adminUsers.email, email.toLowerCase()))
+          .limit(1);
+        user = results[0];
+        console.log(`[auth] DB query returned ${results.length} results for ${email.toLowerCase()}`);
+      } catch (dbErr) {
+        console.error(`[auth] DB query FAILED:`, dbErr);
+        return res.json({ success: true, message: successMsg });
+      }
 
       if (!user) {
         console.log(`[auth] No user found for email: ${email.toLowerCase()}`);
