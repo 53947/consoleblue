@@ -76,11 +76,14 @@ export function createAuthRoutes(db: NodePgDatabase) {
         .limit(1);
 
       if (!user) {
-        // Don't reveal whether the email exists
+        console.log(`[auth] No user found for email: ${email.toLowerCase()}`);
         return res.json({ success: true, message: successMsg });
       }
 
+      console.log(`[auth] User found: id=${user.id}, isActive=${user.isActive}`);
+
       if (!user.isActive) {
+        console.log(`[auth] User is inactive, skipping`);
         return res.json({ success: true, message: successMsg });
       }
 

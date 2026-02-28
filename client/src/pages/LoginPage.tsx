@@ -71,8 +71,15 @@ export default function LoginPage() {
                 The link expires in 15 minutes.
               </p>
               <button
-                onClick={() => { setSent(false); setError(""); }}
+                onClick={() => { setSent(false); setSending(false); }}
                 className="text-sm text-blue-600 hover:underline"
+              >
+                Resend link
+              </button>
+              <span className="text-gray-300 mx-2">|</span>
+              <button
+                onClick={() => { setSent(false); setEmail(""); setError(""); }}
+                className="text-sm text-gray-500 hover:underline"
               >
                 Try a different email
               </button>
