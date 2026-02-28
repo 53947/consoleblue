@@ -262,7 +262,7 @@ export function createAuthRoutes(db: NodePgDatabase) {
         try {
           const resend = new Resend(resendKey);
           await resend.emails.send({
-            from: process.env.EMAIL_FROM || "Console.Blue <noreply@triadblue.com>",
+            from: process.env.EMAIL_FROM || "Console.Blue <onboarding@resend.dev>",
             to: email,
             subject: "Reset your Console.Blue password",
             html: `
