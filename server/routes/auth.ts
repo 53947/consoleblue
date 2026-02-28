@@ -13,28 +13,57 @@ import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 export function createAuthRoutes(db: NodePgDatabase) {
   const router = Router();
 
-  async function hashPassword(password: string): Promise<string> {
-    const bcrypt = await import("bcrypt");
-    return bcrypt.default.hash(password, 12);
+  // Helper: send magic login link via Resend
+  async function sendMagicLink(email: string, loginUrl: string) {
+    const resendKey = process.env.RESEND_API_KEY;
+    if (!resendKey) {
+      console.log(`[auth] No RESEND_API_KEY — login link: ${loginUrl}`);
+      return;
+    }
+
+    const resend = new Resend(resendKey);
+    await resend.emails.send({
+      from: process.env.EMAIL_FROM || "Console.Blue <noreply@triadblue.com>",
+      to: email,
+      subject: "Sign in to Console.Blue",
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 20px;">
+          <div style="text-align: center; margin-bottom: 32px;">
+            <span style="font-size: 24px; font-weight: bold;">
+              <span style="color: #FF44CC;">Console.</span><span style="color: #0000FF;">Blue</span>
+            </span>
+          </div>
+          <h2 style="color: #111; font-size: 20px; margin-bottom: 16px;">Sign in to Console.Blue</h2>
+          <p style="color: #555; line-height: 1.6;">
+            Click the button below to sign in. This link expires in 15 minutes.
+          </p>
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${loginUrl}" style="background-color: #0000FF; color: white; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: 600; display: inline-block;">
+              Sign In
+            </a>
+          </div>
+          <p style="color: #999; font-size: 13px; line-height: 1.5;">
+            If you didn't request this, you can ignore this email.
+          </p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0;" />
+          <p style="color: #bbb; font-size: 12px; text-align: center;">
+            Console.Blue — Project Management Hub
+          </p>
+        </div>
+      `,
+    });
+    console.log(`[auth] Magic link email sent to ${email}`);
   }
 
-  async function verifyPassword(
-    password: string,
-    hash: string,
-  ): Promise<boolean> {
-    const bcrypt = await import("bcrypt");
-    return bcrypt.default.compare(password, hash);
-  }
-
-  // POST /api/auth/login
-  router.post("/login", async (req, res) => {
+  // POST /api/auth/send-magic-link
+  // User enters email, we send them a login link
+  router.post("/send-magic-link", async (req, res) => {
     try {
-      const { email, password, rememberMe } = req.body;
+      const { email } = req.body;
+      const successMsg = "If an account exists, we sent you a sign-in link.";
 
-      if (!email || !password) {
-        return res
-          .status(400)
-          .json({ error: "Email and password are required" });
+      if (!email) {
+        return res.json({ success: true, message: successMsg });
       }
 
       const [user] = await db
@@ -44,51 +73,89 @@ export function createAuthRoutes(db: NodePgDatabase) {
         .limit(1);
 
       if (!user) {
-        await hashPassword(password); // prevent timing attacks
-        return res.status(401).json({ error: "Invalid email or password" });
+        // Don't reveal whether the email exists
+        return res.json({ success: true, message: successMsg });
       }
 
       if (!user.isActive) {
-        return res.status(403).json({ error: "Account is disabled" });
+        return res.json({ success: true, message: successMsg });
       }
 
-      // Check lockout
-      if (user.accountLocked && user.lockedUntil && user.lockedUntil > new Date()) {
-        return res.status(423).json({
-          error: "Account is temporarily locked. Try again in 15 minutes.",
-        });
+      // Generate token (reuse passwordResetTokens table)
+      const token = randomBytes(32).toString("hex");
+      await db.insert(passwordResetTokens).values({
+        userId: user.id,
+        token,
+        expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes
+      });
+
+      // Build login URL
+      const baseUrl =
+        process.env.FRONTEND_URL ||
+        (req.headers.origin || `${req.protocol}://${req.get("host")}`);
+      const loginUrl = `${baseUrl}/magic-login?token=${token}`;
+
+      try {
+        await sendMagicLink(email, loginUrl);
+      } catch (emailErr) {
+        console.error("[auth] Failed to send magic link:", emailErr);
       }
 
-      const valid = await verifyPassword(password, user.passwordHash);
-      if (!valid) {
-        const attempts = user.failedLoginAttempts + 1;
-        const shouldLock = attempts >= 5;
+      res.json({ success: true, message: successMsg });
+    } catch (err) {
+      console.error("Magic link error:", err);
+      res.status(500).json({ error: "An error occurred" });
+    }
+  });
 
-        await db
-          .update(adminUsers)
-          .set({
-            failedLoginAttempts: attempts,
-            lastFailedLogin: new Date(),
-            accountLocked: shouldLock,
-            lockedUntil: shouldLock
-              ? new Date(Date.now() + 15 * 60 * 1000)
-              : null,
-          })
-          .where(eq(adminUsers.id, user.id));
+  // GET /api/auth/verify-magic-link
+  // User clicks the link in their email, we log them in
+  router.get("/verify-magic-link", async (req, res) => {
+    try {
+      const token = req.query.token as string;
+      const baseUrl =
+        process.env.FRONTEND_URL ||
+        (req.headers.origin || `${req.protocol}://${req.get("host")}`);
 
-        if (shouldLock) {
-          return res.status(423).json({
-            error: "Too many failed attempts. Account locked for 15 minutes.",
-          });
-        }
-        return res.status(401).json({ error: "Invalid email or password" });
+      if (!token) {
+        return res.redirect(`${baseUrl}/login?error=invalid`);
       }
 
-      // Success — reset failed attempts, create session
+      const [resetToken] = await db
+        .select()
+        .from(passwordResetTokens)
+        .where(
+          and(
+            eq(passwordResetTokens.token, token),
+            gt(passwordResetTokens.expiresAt, new Date()),
+          ),
+        )
+        .limit(1);
+
+      if (!resetToken || resetToken.usedAt) {
+        return res.redirect(`${baseUrl}/login?error=expired`);
+      }
+
+      // Mark token as used
+      await db
+        .update(passwordResetTokens)
+        .set({ usedAt: new Date() })
+        .where(eq(passwordResetTokens.id, resetToken.id));
+
+      // Get user
+      const [user] = await db
+        .select()
+        .from(adminUsers)
+        .where(eq(adminUsers.id, resetToken.userId))
+        .limit(1);
+
+      if (!user || !user.isActive) {
+        return res.redirect(`${baseUrl}/login?error=invalid`);
+      }
+
+      // Create session
       const sessionToken = randomBytes(32).toString("hex");
-      const expiresAt = new Date(
-        Date.now() + (rememberMe ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000),
-      );
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
       await db.insert(adminSessions).values({
         userId: user.id,
@@ -115,21 +182,17 @@ export function createAuthRoutes(db: NodePgDatabase) {
       req.session.save((err) => {
         if (err) {
           console.error("Session save error:", err);
-          return res.status(500).json({ error: "Failed to create session" });
+          return res.redirect(`${baseUrl}/login?error=session`);
         }
-        res.json({
-          success: true,
-          user: {
-            id: user.id,
-            email: user.email,
-            displayName: user.displayName,
-            role: user.role,
-          },
-        });
+        // Redirect to dashboard
+        res.redirect(baseUrl + "/");
       });
     } catch (err) {
-      console.error("Login error:", err);
-      res.status(500).json({ error: "Login failed" });
+      console.error("Verify magic link error:", err);
+      const baseUrl =
+        process.env.FRONTEND_URL ||
+        (req.headers.origin || `${req.protocol}://${req.get("host")}`);
+      res.redirect(`${baseUrl}/login?error=server`);
     }
   });
 
@@ -190,7 +253,6 @@ export function createAuthRoutes(db: NodePgDatabase) {
           .json({ error: "Email and password are required" });
       }
 
-      // Check if any admin exists
       const existing = await db
         .select({ id: adminUsers.id })
         .from(adminUsers)
@@ -200,7 +262,8 @@ export function createAuthRoutes(db: NodePgDatabase) {
         return res.status(409).json({ error: "Admin user already exists" });
       }
 
-      const passwordHash = await hashPassword(password);
+      const bcrypt = await import("bcrypt");
+      const passwordHash = await bcrypt.default.hash(password, 12);
       const [user] = await db
         .insert(adminUsers)
         .values({
@@ -220,162 +283,6 @@ export function createAuthRoutes(db: NodePgDatabase) {
       console.error("Seed admin error:", err);
       res.status(500).json({ error: "Failed to create admin user" });
     }
-  });
-
-  // POST /api/auth/forgot-password
-  router.post("/forgot-password", async (req, res) => {
-    try {
-      const { email } = req.body;
-      // Always return success to prevent email enumeration
-      const successMsg = "If an account exists, a reset link will be sent.";
-
-      if (!email) {
-        return res.json({ success: true, message: successMsg });
-      }
-
-      const [user] = await db
-        .select()
-        .from(adminUsers)
-        .where(eq(adminUsers.email, email.toLowerCase()))
-        .limit(1);
-
-      if (!user) {
-        return res.json({ success: true, message: successMsg });
-      }
-
-      const token = randomBytes(32).toString("hex");
-      await db.insert(passwordResetTokens).values({
-        userId: user.id,
-        token,
-        expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
-      });
-
-      // Build reset URL
-      const baseUrl =
-        process.env.FRONTEND_URL ||
-        (req.headers.origin || `${req.protocol}://${req.get("host")}`);
-      const resetUrl = `${baseUrl}/reset-password?token=${token}`;
-
-      // Send email via Resend
-      const resendKey = process.env.RESEND_API_KEY;
-      if (resendKey) {
-        try {
-          const resend = new Resend(resendKey);
-          await resend.emails.send({
-            from: process.env.EMAIL_FROM || "Console.Blue <onboarding@resend.dev>",
-            to: email,
-            subject: "Reset your Console.Blue password",
-            html: `
-              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 20px;">
-                <div style="text-align: center; margin-bottom: 32px;">
-                  <span style="font-size: 24px; font-weight: bold;">
-                    <span style="color: #FF44CC;">Console.</span><span style="color: #0000FF;">Blue</span>
-                  </span>
-                </div>
-                <h2 style="color: #111; font-size: 20px; margin-bottom: 16px;">Reset your password</h2>
-                <p style="color: #555; line-height: 1.6;">
-                  Click the button below to reset your password. This link expires in 1 hour.
-                </p>
-                <div style="text-align: center; margin: 32px 0;">
-                  <a href="${resetUrl}" style="background-color: #0000FF; color: white; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: 600; display: inline-block;">
-                    Reset Password
-                  </a>
-                </div>
-                <p style="color: #999; font-size: 13px; line-height: 1.5;">
-                  If you didn't request this, you can ignore this email. The link will expire on its own.
-                </p>
-                <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0;" />
-                <p style="color: #bbb; font-size: 12px; text-align: center;">
-                  Console.Blue — Project Management Hub
-                </p>
-              </div>
-            `,
-          });
-          console.log(`[auth] Password reset email sent to ${email}`);
-        } catch (emailErr) {
-          console.error("[auth] Failed to send reset email:", emailErr);
-        }
-      } else {
-        console.log(`[auth] No RESEND_API_KEY — reset token for ${email}: ${token}`);
-      }
-
-      res.json({ success: true, message: successMsg });
-    } catch (err) {
-      console.error("Forgot password error:", err);
-      res.status(500).json({ error: "An error occurred" });
-    }
-  });
-
-  // POST /api/auth/reset-password
-  router.post("/reset-password", async (req, res) => {
-    try {
-      const { token, password } = req.body;
-
-      if (!token || !password) {
-        return res
-          .status(400)
-          .json({ error: "Token and password are required" });
-      }
-
-      if (password.length < 8) {
-        return res
-          .status(400)
-          .json({ error: "Password must be at least 8 characters" });
-      }
-
-      const [resetToken] = await db
-        .select()
-        .from(passwordResetTokens)
-        .where(
-          and(
-            eq(passwordResetTokens.token, token),
-            gt(passwordResetTokens.expiresAt, new Date()),
-          ),
-        )
-        .limit(1);
-
-      if (!resetToken || resetToken.usedAt) {
-        return res.status(400).json({ error: "Invalid or expired reset link" });
-      }
-
-      const passwordHash = await hashPassword(password);
-
-      await db
-        .update(adminUsers)
-        .set({ passwordHash })
-        .where(eq(adminUsers.id, resetToken.userId));
-
-      await db
-        .update(passwordResetTokens)
-        .set({ usedAt: new Date() })
-        .where(eq(passwordResetTokens.id, resetToken.id));
-
-      res.json({ success: true, message: "Password has been reset" });
-    } catch (err) {
-      console.error("Reset password error:", err);
-      res.status(500).json({ error: "An error occurred" });
-    }
-  });
-
-  // GET /api/auth/validate-reset-token
-  router.get("/validate-reset-token", async (req, res) => {
-    const token = req.query.token as string;
-    if (!token) {
-      return res.json({ valid: false });
-    }
-
-    const [resetToken] = await db
-      .select()
-      .from(passwordResetTokens)
-      .where(
-        and(
-          eq(passwordResetTokens.token, token),
-          gt(passwordResetTokens.expiresAt, new Date()),
-        ),
-      )
-      .limit(1);
-
-    res.json({ valid: !!resetToken && !resetToken.usedAt });
   });
 
   return router;

@@ -9,8 +9,6 @@ import ProjectGitHubPage from "@/pages/ProjectGitHubPage";
 import AuditLogPage from "@/pages/AuditLogPage";
 import SettingsPage from "@/pages/SettingsPage";
 import SharedDocsPage from "@/pages/SharedDocsPage";
-import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
-import ResetPasswordPage from "@/pages/ResetPasswordPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -67,8 +65,6 @@ function AppRouter() {
   return (
     <Switch>
       <Route path="/login" component={LoginPage} />
-      <Route path="/forgot-password" component={ForgotPasswordPage} />
-      <Route path="/reset-password" component={ResetPasswordPage} />
       <Route path="/">
         <ProtectedRoute component={ProjectListPage} />
       </Route>

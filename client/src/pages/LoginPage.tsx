@@ -1,47 +1,34 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
-import { useLogin, useForgotPassword } from "@/hooks/use-auth";
+import { apiClient } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { BRAND_ASSETS } from "@/lib/assets";
-import { Eye, EyeOff, Mail, ArrowLeft } from "lucide-react";
-
-type View = "login" | "forgot" | "sent";
+import { Mail } from "lucide-react";
 
 export default function LoginPage() {
-  const [, navigate] = useLocation();
-  const login = useLogin();
-  const forgotPassword = useForgotPassword();
-  const [view, setView] = useState<View>("login");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
 
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    try {
-      await login.mutateAsync({ email, password, rememberMe });
-      navigate("/");
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Login failed";
-      setError(message);
-    }
-  }
+  // Check for error from magic link redirect
+  const params = new URLSearchParams(window.location.search);
+  const urlError = params.get("error");
 
-  async function handleForgot(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setSending(true);
+
     try {
-      await forgotPassword.mutateAsync(email);
-      setView("sent");
+      await apiClient.post("/auth/send-magic-link", { email });
+      setSent(true);
     } catch {
-      setView("sent"); // always show sent to prevent email enumeration
+      setSent(true); // always show sent to prevent email enumeration
+    } finally {
+      setSending(false);
     }
   }
 
@@ -60,13 +47,42 @@ export default function LoginPage() {
           </h1>
         </CardHeader>
         <CardContent>
-          {/* ── Login View ── */}
-          {view === "login" && (
+          {urlError && !sent && (
+            <div className="bg-red-50 text-red-700 text-sm p-3 rounded-md border border-red-200 mb-4">
+              {urlError === "expired"
+                ? "That link has expired. Request a new one."
+                : urlError === "session"
+                  ? "Session error. Please try again."
+                  : "Invalid link. Request a new one."}
+            </div>
+          )}
+
+          {sent ? (
+            <div className="text-center space-y-4">
+              <div className="mx-auto w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center">
+                <Mail className="h-6 w-6 text-blue-600" />
+              </div>
+              <h2 className="text-lg font-semibold">Check your email</h2>
+              <p className="text-sm text-gray-500">
+                We sent a sign-in link to <strong>{email}</strong>.
+                Click the link in the email to sign in.
+              </p>
+              <p className="text-xs text-gray-400">
+                The link expires in 15 minutes.
+              </p>
+              <button
+                onClick={() => { setSent(false); setError(""); }}
+                className="text-sm text-blue-600 hover:underline"
+              >
+                Try a different email
+              </button>
+            </div>
+          ) : (
             <>
               <p className="text-sm text-muted-foreground text-center mb-4">
-                Sign in to your project management hub
+                Enter your email and we'll send you a link to sign in.
               </p>
-              <form onSubmit={handleLogin} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-4">
                 {error && (
                   <div className="bg-red-50 text-red-700 text-sm p-3 rounded-md border border-red-200">
                     {error}
@@ -86,131 +102,15 @@ export default function LoginPage() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <div className="relative">
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Enter your password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      className="pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                      tabIndex={-1}
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="remember"
-                      checked={rememberMe}
-                      onChange={(e) => setRememberMe(e.target.checked)}
-                      className="rounded border-gray-300"
-                    />
-                    <Label htmlFor="remember" className="text-sm font-normal">
-                      Remember me for 7 days
-                    </Label>
-                  </div>
-                </div>
-
                 <Button
                   type="submit"
                   className="w-full"
-                  disabled={login.isPending}
+                  disabled={sending}
                 >
-                  {login.isPending ? "Signing in..." : "Sign in"}
+                  {sending ? "Sending..." : "Send Sign-In Link"}
                 </Button>
               </form>
-
-              <div className="mt-4 pt-4 border-t text-center">
-                <button
-                  onClick={() => { setView("forgot"); setError(""); }}
-                  className="text-sm text-blue-600 hover:underline"
-                >
-                  Forgot your password? We'll email you a reset link.
-                </button>
-              </div>
             </>
-          )}
-
-          {/* ── Forgot Password View ── */}
-          {view === "forgot" && (
-            <>
-              <h2 className="text-lg font-semibold text-center mb-2">
-                Reset your password
-              </h2>
-              <p className="text-sm text-muted-foreground text-center mb-4">
-                Enter your email and we'll send you a link to set a new password.
-              </p>
-              <form onSubmit={handleForgot} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="reset-email">Email</Label>
-                  <Input
-                    id="reset-email"
-                    type="email"
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    autoFocus
-                  />
-                </div>
-
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={forgotPassword.isPending}
-                >
-                  {forgotPassword.isPending ? "Sending..." : "Send Reset Link"}
-                </Button>
-              </form>
-
-              <div className="mt-4 text-center">
-                <button
-                  onClick={() => { setView("login"); setError(""); }}
-                  className="text-sm text-gray-500 hover:text-gray-700 inline-flex items-center gap-1"
-                >
-                  <ArrowLeft className="h-3.5 w-3.5" />
-                  Back to sign in
-                </button>
-              </div>
-            </>
-          )}
-
-          {/* ── Email Sent View ── */}
-          {view === "sent" && (
-            <div className="text-center space-y-4">
-              <div className="mx-auto w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center">
-                <Mail className="h-6 w-6 text-blue-600" />
-              </div>
-              <h2 className="text-lg font-semibold">Check your email</h2>
-              <p className="text-sm text-gray-500">
-                If an account exists for <strong>{email}</strong>, we sent a
-                password reset link. Check your inbox.
-              </p>
-              <button
-                onClick={() => { setView("login"); setError(""); }}
-                className="text-sm text-gray-500 hover:text-gray-700 inline-flex items-center gap-1"
-              >
-                <ArrowLeft className="h-3.5 w-3.5" />
-                Back to sign in
-              </button>
-            </div>
           )}
         </CardContent>
       </Card>
