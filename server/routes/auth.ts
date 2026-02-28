@@ -13,6 +13,8 @@ import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 export function createAuthRoutes(db: NodePgDatabase) {
   const router = Router();
 
+  console.log(`[auth] Routes registered. RESEND_API_KEY: ${process.env.RESEND_API_KEY ? "SET" : "NOT SET"}`);
+
   // Helper: send magic login link via Resend
   async function sendMagicLink(email: string, loginUrl: string) {
     const resendKey = process.env.RESEND_API_KEY;
@@ -58,6 +60,7 @@ export function createAuthRoutes(db: NodePgDatabase) {
   // POST /api/auth/send-magic-link
   // User enters email, we send them a login link
   router.post("/send-magic-link", async (req, res) => {
+    console.log(`[auth] /send-magic-link hit, body:`, req.body);
     try {
       const { email } = req.body;
       const successMsg = "If an account exists, we sent you a sign-in link.";
