@@ -1,3 +1,4 @@
+import { useState, useCallback, useRef } from "react";
 import {
   useQuery,
   useMutation,
@@ -55,6 +56,109 @@ export function useArchiveChatThread() {
       queryClient.invalidateQueries({ queryKey: ["chat-threads"] });
     },
   });
+}
+
+export function useStreamMessage() {
+  const queryClient = useQueryClient();
+  const [streamingContent, setStreamingContent] = useState("");
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  const send = useCallback(
+    async (threadId: number, content: string) => {
+      setStreamingContent("");
+      setIsStreaming(true);
+      setError(null);
+
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      try {
+        const res = await fetch(`/api/chat/threads/${threadId}/messages`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content }),
+          signal: controller.signal,
+        });
+
+        // Non-SSE response (provider not configured) — parse as JSON
+        const contentType = res.headers.get("content-type") || "";
+        if (contentType.includes("application/json")) {
+          await res.json();
+          queryClient.invalidateQueries({
+            queryKey: ["chat-threads", threadId],
+          });
+          queryClient.invalidateQueries({ queryKey: ["chat-threads"] });
+          setIsStreaming(false);
+          return;
+        }
+
+        // SSE response — read stream
+        const reader = res.body?.getReader();
+        if (!reader) {
+          setIsStreaming(false);
+          return;
+        }
+
+        const decoder = new TextDecoder();
+        let accumulated = "";
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+
+          const lines = buffer.split("\n");
+          // Keep the last potentially incomplete line in the buffer
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed.startsWith("data: ")) continue;
+
+            const data = trimmed.slice(6);
+            if (data === "[DONE]") continue;
+
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.type === "chunk") {
+                accumulated += parsed.content;
+                setStreamingContent(accumulated);
+              } else if (parsed.type === "error") {
+                setError(parsed.error);
+              }
+            } catch {
+              // Skip malformed JSON lines
+            }
+          }
+        }
+
+        // Invalidate to get the final DB state
+        queryClient.invalidateQueries({
+          queryKey: ["chat-threads", threadId],
+        });
+        queryClient.invalidateQueries({ queryKey: ["chat-threads"] });
+      } catch (err: any) {
+        if (err.name !== "AbortError") {
+          setError(err.message || "Failed to send message");
+        }
+      } finally {
+        setIsStreaming(false);
+        setStreamingContent("");
+        abortRef.current = null;
+      }
+    },
+    [queryClient],
+  );
+
+  const abort = useCallback(() => {
+    abortRef.current?.abort();
+  }, []);
+
+  return { send, streamingContent, isStreaming, error, abort };
 }
 
 export function useSendMessage() {

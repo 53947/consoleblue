@@ -8,6 +8,8 @@ import {
 import { validateBody } from "../middleware/validation";
 import type { AuditService } from "../services/audit.service";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import { getProvider, getDefaultModel } from "../services/ai/provider-registry";
+import type { AIProviderType } from "../../shared/types";
 
 export function createChatRoutes(
   db: NodePgDatabase,
@@ -92,10 +94,69 @@ export function createChatRoutes(
         // Store the user message
         const userMessage = await chatService.addMessage(threadId, req.body);
 
-        // For now, return the stored message.
-        // SSE streaming to AI providers will be added when API keys are configured.
-        // The architecture supports it via AsyncGenerator pattern.
-        res.status(201).json({ message: userMessage });
+        // Look up thread to get provider config
+        const threadData = await chatService.getThread(threadId);
+        if (!threadData) {
+          return res.status(404).json({ error: "Not Found", message: "Thread not found" });
+        }
+
+        const { thread } = threadData;
+        const providerSlug = thread.providerSlug;
+
+        // If no provider configured, return just the stored message
+        if (!providerSlug) {
+          return res.status(201).json({ message: userMessage });
+        }
+
+        // Get provider config from DB
+        const providerConfig = await chatService.getProviderConfig(providerSlug);
+        if (!providerConfig || !providerConfig.isEnabled) {
+          return res.status(201).json({ message: userMessage });
+        }
+
+        // Resolve model: thread modelId > provider modelTiers for agentRole > default
+        const agentRole = thread.agentRole as "builder" | "architect";
+        const tiers = (providerConfig.modelTiers || {}) as { builder?: string; architect?: string };
+        const model =
+          thread.modelId ||
+          tiers[agentRole] ||
+          getDefaultModel(providerConfig.providerType as AIProviderType);
+
+        // Get conversation history (includes the user message we just added)
+        const history = await chatService.getConversationHistory(threadId);
+
+        // Set SSE headers
+        res.writeHead(200, {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+          "X-Accel-Buffering": "no",
+        });
+
+        let fullResponse = "";
+
+        try {
+          const provider = getProvider(providerConfig.providerType as AIProviderType);
+
+          for await (const chunk of provider.chat(history, { model })) {
+            fullResponse += chunk;
+            res.write(`data: ${JSON.stringify({ type: "chunk", content: chunk })}\n\n`);
+          }
+
+          // Store the complete assistant message
+          const assistantMessage = await chatService.addMessage(threadId, {
+            content: fullResponse,
+            role: "assistant",
+          });
+
+          res.write(`data: ${JSON.stringify({ type: "done", message: assistantMessage })}\n\n`);
+        } catch (streamError: any) {
+          const errorMsg = streamError?.message || "AI provider error";
+          res.write(`data: ${JSON.stringify({ type: "error", error: errorMsg })}\n\n`);
+        }
+
+        res.write("data: [DONE]\n\n");
+        res.end();
       } catch (err) {
         next(err);
       }

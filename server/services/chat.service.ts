@@ -155,6 +155,29 @@ export class ChatService {
     return providers;
   }
 
+  async getProviderConfig(slug: string) {
+    const [config] = await this.db
+      .select()
+      .from(aiProviderConfigs)
+      .where(eq(aiProviderConfigs.slug, slug))
+      .limit(1);
+
+    return config || null;
+  }
+
+  async getConversationHistory(threadId: number) {
+    const messages = await this.db
+      .select()
+      .from(chatMessages)
+      .where(eq(chatMessages.threadId, threadId))
+      .orderBy(chatMessages.createdAt);
+
+    return messages.map((m) => ({
+      role: m.role as "user" | "assistant" | "system",
+      content: m.content,
+    }));
+  }
+
   async updateProvider(slug: string, data: Record<string, unknown>) {
     const [existing] = await this.db
       .select()

@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   useChatThreads,
   useChatThread,
   useCreateChatThread,
-  useSendMessage,
+  useStreamMessage,
   useArchiveChatThread,
 } from "@/hooks/use-chat";
 import { useProjects } from "@/hooks/use-projects";
@@ -29,6 +29,8 @@ import {
   Trash2,
   Cpu,
   Wrench,
+  Loader2,
+  Square,
 } from "lucide-react";
 import type { ChatThread } from "@shared/types";
 
@@ -39,13 +41,19 @@ export default function ChatPage() {
   const [newThreadProject, setNewThreadProject] = useState<string>("");
   const [messageInput, setMessageInput] = useState("");
   const [showNewThread, setShowNewThread] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { data: threadsData, isLoading: threadsLoading } = useChatThreads();
   const { data: threadDetail } = useChatThread(selectedThreadId);
   const createThread = useCreateChatThread();
-  const sendMessage = useSendMessage();
+  const { send, streamingContent, isStreaming, error, abort } = useStreamMessage();
   const archiveThread = useArchiveChatThread();
   const { data: projectData } = useProjects();
+
+  // Auto-scroll when new messages arrive or streaming content updates
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [threadDetail?.messages, streamingContent]);
 
   async function handleCreateThread(e: React.FormEvent) {
     e.preventDefault();
@@ -66,13 +74,11 @@ export default function ChatPage() {
 
   async function handleSendMessage(e: React.FormEvent) {
     e.preventDefault();
-    if (!messageInput.trim() || !selectedThreadId) return;
+    if (!messageInput.trim() || !selectedThreadId || isStreaming) return;
 
-    await sendMessage.mutateAsync({
-      threadId: selectedThreadId,
-      content: messageInput.trim(),
-    });
+    const content = messageInput.trim();
     setMessageInput("");
+    await send(selectedThreadId, content);
   }
 
   return (
@@ -182,6 +188,11 @@ export default function ChatPage() {
                   <Badge variant="secondary" className="text-xs capitalize">
                     {threadDetail.thread.agentRole}
                   </Badge>
+                  {threadDetail.thread.providerSlug && (
+                    <Badge variant="outline" className="text-xs">
+                      {threadDetail.thread.providerSlug}
+                    </Badge>
+                  )}
                 </div>
                 <Button
                   variant="ghost"
@@ -235,11 +246,50 @@ export default function ChatPage() {
                       )}
                     </div>
                   ))}
-                  {threadDetail.messages.length === 0 && (
+
+                  {/* Streaming message */}
+                  {isStreaming && streamingContent && (
+                    <div className="flex gap-3 justify-start">
+                      <div className="w-7 h-7 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+                        <Bot className="h-4 w-4 text-purple-600" />
+                      </div>
+                      <div className="max-w-[80%] rounded-lg px-3 py-2 text-sm bg-gray-100 text-gray-700">
+                        <p className="whitespace-pre-wrap">{streamingContent}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Streaming indicator (before any content arrives) */}
+                  {isStreaming && !streamingContent && (
+                    <div className="flex gap-3 justify-start">
+                      <div className="w-7 h-7 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+                        <Bot className="h-4 w-4 text-purple-600" />
+                      </div>
+                      <div className="rounded-lg px-3 py-2 text-sm bg-gray-100 text-gray-400 flex items-center gap-2">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        Thinking...
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Error display */}
+                  {error && (
+                    <div className="flex gap-3 justify-start">
+                      <div className="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                        <Bot className="h-4 w-4 text-red-600" />
+                      </div>
+                      <div className="max-w-[80%] rounded-lg px-3 py-2 text-sm bg-red-50 text-red-700 border border-red-200">
+                        <p>{error}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {threadDetail.messages.length === 0 && !isStreaming && (
                     <p className="text-sm text-gray-400 text-center py-8">
                       Start a conversation...
                     </p>
                   )}
+                  <div ref={messagesEndRef} />
                 </div>
               </ScrollArea>
 
@@ -253,13 +303,25 @@ export default function ChatPage() {
                   onChange={(e) => setMessageInput(e.target.value)}
                   placeholder="Type a message..."
                   className="flex-1"
+                  disabled={isStreaming}
                 />
-                <Button
-                  type="submit"
-                  disabled={sendMessage.isPending || !messageInput.trim()}
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
+                {isStreaming ? (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    onClick={abort}
+                  >
+                    <Square className="h-4 w-4" />
+                  </Button>
+                ) : (
+                  <Button
+                    type="submit"
+                    disabled={!messageInput.trim()}
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                )}
               </form>
             </>
           ) : (
