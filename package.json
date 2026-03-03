@@ -8,7 +8,8 @@
     "build": "vite build && esbuild server/index.ts --bundle --platform=node --outdir=dist --format=esm --external:pg-native --packages=external",
     "start": "NODE_ENV=production node dist/index.js",
     "db:generate": "drizzle-kit generate",
-    "db:push": "drizzle-kit push --force",
+    "db:push": "drizzle-kit push --force --dialect=postgresql",
+    "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx server/db/run-seed.ts"
   },
   "dependencies": {
