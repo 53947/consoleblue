@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useDashboardStats } from "@/hooks/use-dashboard";
 import { useProjects } from "@/hooks/use-projects";
 import { Link } from "wouter";
@@ -5,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TaskCreateDialog } from "@/components/tasks/TaskCreateDialog";
 import {
   FolderOpen,
   CheckSquare,
@@ -53,6 +55,7 @@ const ACTION_ICONS: Record<string, string> = {
 };
 
 export default function DashboardPage() {
+  const [taskCreateOpen, setTaskCreateOpen] = useState(false);
   const { data: stats, isLoading } = useDashboardStats();
   const { data: projectData } = useProjects();
 
@@ -111,12 +114,14 @@ export default function DashboardPage() {
             <CardTitle className="text-sm">Quick Actions</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-2">
-            <Link href="/tasks">
-              <Button variant="outline" className="w-full justify-start h-auto py-3">
-                <Plus className="h-4 w-4 mr-2" />
-                <span className="text-xs">New Task</span>
-              </Button>
-            </Link>
+            <Button
+              variant="outline"
+              className="w-full justify-start h-auto py-3"
+              onClick={() => setTaskCreateOpen(true)}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              <span className="text-xs">New Task</span>
+            </Button>
             <Link href="/projects">
               <Button variant="outline" className="w-full justify-start h-auto py-3">
                 <FolderOpen className="h-4 w-4 mr-2" />
@@ -271,6 +276,8 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      <TaskCreateDialog open={taskCreateOpen} onOpenChange={setTaskCreateOpen} />
     </div>
   );
 }
