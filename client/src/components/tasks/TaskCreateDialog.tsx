@@ -39,6 +39,7 @@ export function TaskCreateDialog({
   const [description, setDescription] = useState(defaultDescription);
   const [status, setStatus] = useState("todo");
   const [priority, setPriority] = useState("medium");
+  const [dueDate, setDueDate] = useState("");
   const [projectId, setProjectId] = useState<string>(
     defaultProjectId ? String(defaultProjectId) : "none",
   );
@@ -52,6 +53,7 @@ export function TaskCreateDialog({
       description: description.trim() || undefined,
       status: status as any,
       priority: priority as any,
+      dueDate: dueDate || undefined,
       projectId: projectId !== "none" ? parseInt(projectId, 10) : undefined,
     });
 
@@ -59,6 +61,7 @@ export function TaskCreateDialog({
     setDescription("");
     setStatus("todo");
     setPriority("medium");
+    setDueDate("");
     onOpenChange(false);
   }
 
@@ -124,6 +127,16 @@ export function TaskCreateDialog({
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div>
+            <Label htmlFor="dueDate">Due Date</Label>
+            <Input
+              id="dueDate"
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+            />
           </div>
 
           <div>
