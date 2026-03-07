@@ -1,18 +1,18 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import {
   useChatThreads,
   useChatThread,
   useCreateChatThread,
   useStreamMessage,
-  useArchiveChatThread,
   useChatProviders,
   useUpdateChatProvider,
 } from "@/hooks/use-chat";
 import { useProjects } from "@/hooks/use-projects";
+import { useQuery } from "@tanstack/react-query";
+import { apiClient } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -41,10 +41,14 @@ import {
   Settings,
   GitBranch,
   FolderOpen,
+  FileCode,
+  FolderIcon,
+  ChevronRight,
+  ArrowLeft,
 } from "lucide-react";
 import type { ChatThread, ChatMessage } from "@shared/types";
 
-// ── Single Chat Pane (reusable for Architect or Builder) ──
+// ── Compact Chat Pane ──
 
 function ChatPane({
   role,
@@ -75,22 +79,18 @@ function ChatPane({
 
   const Icon = role === "architect" ? Cpu : Wrench;
   const label = role === "architect" ? "Architect" : "Builder";
-  const subtitle =
-    role === "architect"
-      ? "Plans, reviews & inspects"
-      : "Writes code & implements";
 
   if (!threadId) {
     return (
-      <div className="flex-1 flex flex-col bg-white rounded-lg border border-gray-200 opacity-50">
+      <div className="flex flex-col bg-white rounded-lg border border-gray-200 opacity-40">
         <div
-          className="px-4 py-3 border-b flex items-center gap-2"
+          className="px-3 py-2 border-b flex items-center gap-2"
           style={{ borderTopColor: colorAccent, borderTopWidth: 3 }}
         >
-          <Icon className="h-4 w-4" style={{ color: colorAccent }} />
-          <span className="font-medium text-sm">{label}</span>
+          <Icon className="h-3.5 w-3.5" style={{ color: colorAccent }} />
+          <span className="font-medium text-xs">{label}</span>
         </div>
-        <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">
+        <div className="flex-1 flex items-center justify-center text-gray-400 text-xs p-4">
           Select a project to start
         </div>
       </div>
@@ -98,110 +98,76 @@ function ChatPane({
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-white rounded-lg border border-gray-200 min-w-0">
-      {/* Pane Header */}
+    <div className="flex flex-col bg-white rounded-lg border border-gray-200 min-w-0">
+      {/* Header */}
       <div
-        className="px-4 py-3 border-b flex items-center gap-2"
+        className="px-3 py-2 border-b flex items-center gap-2"
         style={{ borderTopColor: colorAccent, borderTopWidth: 3 }}
       >
-        <Icon className="h-4 w-4" style={{ color: colorAccent }} />
-        <div>
-          <span className="font-medium text-sm">{label}</span>
-          <span className="text-xs text-gray-400 ml-2">{subtitle}</span>
-        </div>
+        <Icon className="h-3.5 w-3.5" style={{ color: colorAccent }} />
+        <span className="font-medium text-xs">{label}</span>
         {threadDetail?.thread.providerSlug && (
-          <Badge variant="outline" className="text-xs ml-auto">
+          <Badge variant="outline" className="text-[10px] ml-auto px-1.5 py-0">
             {threadDetail.thread.providerSlug}
           </Badge>
         )}
       </div>
 
-      {/* Messages */}
-      <ScrollArea className="flex-1 p-4">
-        <div className="space-y-4">
+      {/* Messages — compact */}
+      <ScrollArea className="flex-1 px-3 py-2">
+        <div className="space-y-2">
           {threadDetail?.messages.map((msg: ChatMessage) => (
-            <div
-              key={msg.id}
-              className={`flex gap-3 ${
-                msg.role === "user" ? "justify-end" : "justify-start"
-              }`}
-            >
-              {msg.role !== "user" && (
-                <div
-                  className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ backgroundColor: `${colorAccent}15` }}
-                >
-                  <Bot className="h-4 w-4" style={{ color: colorAccent }} />
+            <div key={msg.id}>
+              {msg.role === "user" ? (
+                <div className="flex items-start gap-1.5">
+                  <User className="h-3 w-3 text-gray-400 mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-gray-600 whitespace-pre-wrap">
+                    {msg.content}
+                  </p>
                 </div>
-              )}
-              <div
-                className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
-                  msg.role === "user"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-100 text-gray-700"
-                }`}
-              >
-                <p className="whitespace-pre-wrap">{msg.content}</p>
-                <p
-                  className={`text-xs mt-1 ${
-                    msg.role === "user" ? "text-blue-200" : "text-gray-400"
-                  }`}
-                >
-                  {new Date(msg.createdAt).toLocaleTimeString()}
-                </p>
-              </div>
-              {msg.role === "user" && (
-                <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
-                  <User className="h-4 w-4 text-gray-600" />
+              ) : (
+                <div className="flex items-start gap-1.5">
+                  <Bot
+                    className="h-3 w-3 mt-0.5 flex-shrink-0"
+                    style={{ color: colorAccent }}
+                  />
+                  <p className="text-xs text-gray-800 whitespace-pre-wrap">
+                    {msg.content}
+                  </p>
                 </div>
               )}
             </div>
           ))}
 
           {isStreaming && streamingContent && (
-            <div className="flex gap-3 justify-start">
-              <div
-                className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
-                style={{ backgroundColor: `${colorAccent}15` }}
-              >
-                <Bot className="h-4 w-4" style={{ color: colorAccent }} />
-              </div>
-              <div className="max-w-[85%] rounded-lg px-3 py-2 text-sm bg-gray-100 text-gray-700">
-                <p className="whitespace-pre-wrap">{streamingContent}</p>
-              </div>
+            <div className="flex items-start gap-1.5">
+              <Bot
+                className="h-3 w-3 mt-0.5 flex-shrink-0"
+                style={{ color: colorAccent }}
+              />
+              <p className="text-xs text-gray-800 whitespace-pre-wrap">
+                {streamingContent}
+              </p>
             </div>
           )}
 
           {isStreaming && !streamingContent && (
-            <div className="flex gap-3 justify-start">
-              <div
-                className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
-                style={{ backgroundColor: `${colorAccent}15` }}
-              >
-                <Bot className="h-4 w-4" style={{ color: colorAccent }} />
-              </div>
-              <div className="rounded-lg px-3 py-2 text-sm bg-gray-100 text-gray-400 flex items-center gap-2">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                Thinking...
-              </div>
+            <div className="flex items-center gap-1.5 text-gray-400">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              <span className="text-xs">Thinking...</span>
             </div>
           )}
 
           {error && (
-            <div className="flex gap-3 justify-start">
-              <div className="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-                <Bot className="h-4 w-4 text-red-600" />
-              </div>
-              <div className="max-w-[85%] rounded-lg px-3 py-2 text-sm bg-red-50 text-red-700 border border-red-200">
-                <p>{error}</p>
-              </div>
+            <div className="text-xs text-red-600 bg-red-50 rounded px-2 py-1">
+              {error}
             </div>
           )}
 
           {(!threadDetail?.messages || threadDetail.messages.length === 0) &&
             !isStreaming && (
-              <p className="text-sm text-gray-400 text-center py-8">
-                Start a conversation with the {label}...
+              <p className="text-xs text-gray-400 text-center py-4">
+                Ask the {label}...
               </p>
             )}
           <div ref={messagesEndRef} />
@@ -211,13 +177,13 @@ function ChatPane({
       {/* Input */}
       <form
         onSubmit={handleSend}
-        className="flex items-center gap-2 p-3 border-t"
+        className="flex items-center gap-1.5 p-2 border-t"
       >
         <Input
           value={messageInput}
           onChange={(e) => setMessageInput(e.target.value)}
-          placeholder={`Ask the ${label}...`}
-          className="flex-1"
+          placeholder={`Message ${label}...`}
+          className="flex-1 h-7 text-xs"
           disabled={isStreaming}
         />
         {isStreaming ? (
@@ -225,16 +191,182 @@ function ChatPane({
             type="button"
             variant="destructive"
             size="sm"
+            className="h-7 w-7 p-0"
             onClick={abort}
           >
-            <Square className="h-4 w-4" />
+            <Square className="h-3 w-3" />
           </Button>
         ) : (
-          <Button type="submit" disabled={!messageInput.trim()}>
-            <Send className="h-4 w-4" />
+          <Button
+            type="submit"
+            size="sm"
+            className="h-7 w-7 p-0"
+            disabled={!messageInput.trim()}
+          >
+            <Send className="h-3 w-3" />
           </Button>
         )}
       </form>
+    </div>
+  );
+}
+
+// ── Code Viewer Panel ──
+
+function CodePanel({
+  repo,
+  onFileSelect,
+}: {
+  repo: string | null;
+  onFileSelect?: (path: string) => void;
+}) {
+  const [currentPath, setCurrentPath] = useState("");
+  const [viewingFile, setViewingFile] = useState<string | null>(null);
+
+  // Reset when repo changes
+  useEffect(() => {
+    setCurrentPath("");
+    setViewingFile(null);
+  }, [repo]);
+
+  const { data: treeData, isLoading: treeLoading } = useQuery({
+    queryKey: ["github-tree", repo, currentPath],
+    queryFn: () =>
+      apiClient.get<{
+        type: string;
+        contents: { name: string; path: string; type: string; size: number | null }[];
+      }>("/github/tree", { repo: repo!, path: currentPath || undefined }),
+    enabled: !!repo && !viewingFile,
+  });
+
+  const { data: fileData, isLoading: fileLoading } = useQuery({
+    queryKey: ["github-file", repo, viewingFile],
+    queryFn: () =>
+      apiClient.get<{ name: string; path: string; content: string; size: number }>(
+        "/github/file",
+        { repo: repo!, path: viewingFile! },
+      ),
+    enabled: !!repo && !!viewingFile,
+  });
+
+  function handleItemClick(item: { name: string; path: string; type: string }) {
+    if (item.type === "dir") {
+      setCurrentPath(item.path);
+      setViewingFile(null);
+    } else {
+      setViewingFile(item.path);
+      onFileSelect?.(item.path);
+    }
+  }
+
+  function handleBack() {
+    if (viewingFile) {
+      setViewingFile(null);
+      return;
+    }
+    const parts = currentPath.split("/");
+    parts.pop();
+    setCurrentPath(parts.join("/"));
+  }
+
+  if (!repo) {
+    return (
+      <div className="flex-1 flex flex-col bg-gray-900 rounded-lg border border-gray-700 items-center justify-center text-gray-500">
+        <FileCode className="h-10 w-10 mb-3 opacity-30" />
+        <p className="text-sm">Select a project to browse code</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 flex flex-col bg-gray-900 rounded-lg border border-gray-700 min-w-0 overflow-hidden">
+      {/* File browser header */}
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-700 bg-gray-800">
+        {(currentPath || viewingFile) && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0 text-gray-400 hover:text-white hover:bg-gray-700"
+            onClick={handleBack}
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+          </Button>
+        )}
+        <div className="flex items-center gap-1.5 text-xs text-gray-400 min-w-0">
+          <GitBranch className="h-3 w-3 flex-shrink-0" />
+          <span className="font-mono truncate">
+            {repo}
+            {currentPath && `/${currentPath}`}
+            {viewingFile && `/${viewingFile.split("/").pop()}`}
+          </span>
+        </div>
+      </div>
+
+      {/* Content area */}
+      <ScrollArea className="flex-1">
+        {viewingFile ? (
+          // File viewer
+          fileLoading ? (
+            <div className="flex items-center justify-center py-8 text-gray-500">
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              <span className="text-xs">Loading file...</span>
+            </div>
+          ) : fileData ? (
+            <pre className="p-4 text-xs font-mono text-gray-300 leading-relaxed whitespace-pre overflow-x-auto">
+              {fileData.content}
+            </pre>
+          ) : (
+            <p className="text-xs text-gray-500 text-center py-8">
+              Could not load file
+            </p>
+          )
+        ) : // Directory listing
+        treeLoading ? (
+          <div className="flex items-center justify-center py-8 text-gray-500">
+            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            <span className="text-xs">Loading...</span>
+          </div>
+        ) : treeData?.contents ? (
+          <div className="py-1">
+            {[...treeData.contents]
+              .sort((a, b) => {
+                if (a.type === "dir" && b.type !== "dir") return -1;
+                if (a.type !== "dir" && b.type === "dir") return 1;
+                return a.name.localeCompare(b.name);
+              })
+              .map((item) => (
+                <button
+                  key={item.path}
+                  onClick={() => handleItemClick(item)}
+                  className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-gray-800 text-left group"
+                >
+                  {item.type === "dir" ? (
+                    <FolderIcon className="h-3.5 w-3.5 text-blue-400 flex-shrink-0" />
+                  ) : (
+                    <FileCode className="h-3.5 w-3.5 text-gray-500 flex-shrink-0" />
+                  )}
+                  <span className="text-xs text-gray-300 truncate font-mono">
+                    {item.name}
+                  </span>
+                  {item.type === "dir" && (
+                    <ChevronRight className="h-3 w-3 text-gray-600 ml-auto opacity-0 group-hover:opacity-100" />
+                  )}
+                  {item.size != null && item.type !== "dir" && (
+                    <span className="text-[10px] text-gray-600 ml-auto">
+                      {item.size > 1024
+                        ? `${(item.size / 1024).toFixed(1)}k`
+                        : `${item.size}b`}
+                    </span>
+                  )}
+                </button>
+              ))}
+          </div>
+        ) : (
+          <p className="text-xs text-gray-500 text-center py-8">
+            Could not load directory
+          </p>
+        )}
+      </ScrollArea>
     </div>
   );
 }
@@ -264,7 +396,7 @@ export default function ChatPage() {
     (p) => String(p.id) === selectedProjectId,
   );
 
-  // When a project is selected, find or create paired threads
+  // When a project is selected, find existing paired threads
   useEffect(() => {
     if (!selectedProjectId || !threadsData?.threads) return;
 
@@ -290,10 +422,11 @@ export default function ChatPage() {
     const project = projects.find((p) => p.id === pid);
     if (!project) return;
 
-    const archProv = architectProvider || enabledProviders[0]?.slug || undefined;
-    const buildProv = builderProvider || enabledProviders[0]?.slug || undefined;
+    const archProv =
+      architectProvider || enabledProviders[0]?.slug || undefined;
+    const buildProv =
+      builderProvider || enabledProviders[0]?.slug || undefined;
 
-    // Create architect thread if none exists
     if (!architectThreadId) {
       const arch = await createThread.mutateAsync({
         title: `${project.displayName} — Architect`,
@@ -304,7 +437,6 @@ export default function ChatPage() {
       setArchitectThreadId(arch.thread.id);
     }
 
-    // Create builder thread if none exists
     if (!builderThreadId) {
       const build = await createThread.mutateAsync({
         title: `${project.displayName} — Builder`,
@@ -321,15 +453,18 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div className="max-w-[1800px] mx-auto px-4 py-4">
       {/* Top Bar */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-bold text-gray-900">Workspace</h1>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <h1 className="text-xl font-bold text-gray-900">Workspace</h1>
 
           {/* Project Selector */}
-          <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
-            <SelectTrigger className="w-56">
+          <Select
+            value={selectedProjectId}
+            onValueChange={setSelectedProjectId}
+          >
+            <SelectTrigger className="w-52 h-9">
               <FolderOpen className="h-4 w-4 mr-2 text-gray-400" />
               <SelectValue placeholder="Select a project..." />
             </SelectTrigger>
@@ -351,10 +486,13 @@ export default function ChatPage() {
           {/* Provider Selectors */}
           {selectedProjectId && (
             <>
-              <div className="flex items-center gap-1.5">
-                <Cpu className="h-4 w-4 text-purple-500" />
-                <Select value={architectProvider} onValueChange={setArchitectProvider}>
-                  <SelectTrigger className="w-40 h-9">
+              <div className="flex items-center gap-1">
+                <Cpu className="h-3.5 w-3.5 text-purple-500" />
+                <Select
+                  value={architectProvider}
+                  onValueChange={setArchitectProvider}
+                >
+                  <SelectTrigger className="w-36 h-8 text-xs">
                     <SelectValue placeholder="Architect AI" />
                   </SelectTrigger>
                   <SelectContent>
@@ -371,10 +509,13 @@ export default function ChatPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex items-center gap-1.5">
-                <Wrench className="h-4 w-4 text-blue-500" />
-                <Select value={builderProvider} onValueChange={setBuilderProvider}>
-                  <SelectTrigger className="w-40 h-9">
+              <div className="flex items-center gap-1">
+                <Wrench className="h-3.5 w-3.5 text-blue-500" />
+                <Select
+                  value={builderProvider}
+                  onValueChange={setBuilderProvider}
+                >
+                  <SelectTrigger className="w-36 h-8 text-xs">
                     <SelectValue placeholder="Builder AI" />
                   </SelectTrigger>
                   <SelectContent>
@@ -398,9 +539,10 @@ export default function ChatPage() {
           {selectedProjectId && (!architectThreadId || !builderThreadId) && (
             <Button
               onClick={handleStartWorkspace}
+              size="sm"
               disabled={createThread.isPending || enabledProviders.length === 0}
             >
-              <GitBranch className="h-4 w-4 mr-2" />
+              <GitBranch className="h-3.5 w-3.5 mr-1.5" />
               {createThread.isPending ? "Creating..." : "Start Workspace"}
             </Button>
           )}
@@ -456,46 +598,22 @@ export default function ChatPage() {
         </Dialog>
       </div>
 
-      {/* Project Context Bar */}
-      {selectedProject && (
-        <div className="flex items-center gap-4 mb-4 px-4 py-2 bg-gray-50 rounded-lg border text-sm">
-          <div
-            className="w-3 h-3 rounded-full"
-            style={{ backgroundColor: selectedProject.colorPrimary || "#666" }}
-          />
-          <span className="font-medium">{selectedProject.displayName}</span>
-          {selectedProject.githubRepo && (
-            <span className="text-gray-400 flex items-center gap-1">
-              <GitBranch className="h-3 w-3" />
-              {selectedProject.githubRepo}
-            </span>
-          )}
-          {selectedProject.productionUrl && (
-            <a
-              href={selectedProject.productionUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:underline"
-            >
-              {selectedProject.productionUrl}
-            </a>
-          )}
-          <Badge
-            variant="secondary"
-            className="text-xs capitalize ml-auto"
-          >
-            {selectedProject.status}
-          </Badge>
-        </div>
-      )}
-
-      {/* Dual Pane Chat */}
-      <div className="flex gap-4 h-[calc(100vh-220px)]">
+      {/* Three-Column Layout: Architect | Code | Builder */}
+      <div
+        className="grid gap-3 h-[calc(100vh-140px)]"
+        style={{ gridTemplateColumns: "280px 1fr 280px" }}
+      >
+        {/* Left: Architect */}
         <ChatPane
           role="architect"
           threadId={architectThreadId}
           colorAccent="#7C3AED"
         />
+
+        {/* Center: Code Viewer */}
+        <CodePanel repo={selectedProject?.githubRepo || null} />
+
+        {/* Right: Builder */}
         <ChatPane
           role="builder"
           threadId={builderThreadId}
