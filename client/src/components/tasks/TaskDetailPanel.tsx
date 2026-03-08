@@ -16,7 +16,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { X, Trash2, Send, MessageSquare, Highlighter } from "lucide-react";
+import { X, Trash2, Send, MessageSquare, Highlighter, Wrench, Cpu } from "lucide-react";
+import { useLocation } from "wouter";
 import type { Task } from "@shared/types";
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -37,6 +38,7 @@ export function TaskDetailPanel({ taskId, onClose }: TaskDetailPanelProps) {
   const deleteTask = useDeleteTask();
   const addNote = useAddTaskNote();
   const deleteNote = useDeleteTaskNote();
+  const [, setLocation] = useLocation();
   const [noteContent, setNoteContent] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
@@ -152,6 +154,43 @@ export function TaskDetailPanel({ taskId, onClose }: TaskDetailPanelProps) {
               </SelectContent>
             </Select>
           </div>
+        </div>
+
+        {/* Send to AI */}
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            className="flex-1 text-xs"
+            onClick={() => {
+              const params = new URLSearchParams();
+              if (task.projectId) params.set("projectId", String(task.projectId));
+              params.set("role", "architect");
+              params.set("taskId", String(task.id));
+              params.set("prompt", `Task #${task.id}: ${task.title}${task.description ? "\n\n" + task.description : ""}`);
+              setLocation(`/chat?${params.toString()}`);
+              onClose();
+            }}
+          >
+            <Cpu className="h-3.5 w-3.5 mr-1.5" />
+            Send to Architect
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs"
+            onClick={() => {
+              const params = new URLSearchParams();
+              if (task.projectId) params.set("projectId", String(task.projectId));
+              params.set("role", "builder");
+              params.set("taskId", String(task.id));
+              params.set("prompt", `Task #${task.id}: ${task.title}${task.description ? "\n\n" + task.description : ""}`);
+              setLocation(`/chat?${params.toString()}`);
+              onClose();
+            }}
+          >
+            <Wrench className="h-3.5 w-3.5 mr-1.5 text-blue-500" />
+            Builder
+          </Button>
         </div>
 
         {/* Description */}

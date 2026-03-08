@@ -8,6 +8,7 @@ import {
   useUpdateChatProvider,
 } from "@/hooks/use-chat";
 import { useProjects } from "@/hooks/use-projects";
+import { useLocation, useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
@@ -784,6 +785,9 @@ export default function ChatPage() {
   const [proposals, setProposals] = useState<ProposedFile[]>([]);
   const [architectHandoff, setArchitectHandoff] = useState<string | null>(null);
   const [builderHandoff, setBuilderHandoff] = useState<string | null>(null);
+  const [pendingTaskPrompt, setPendingTaskPrompt] = useState<{ role: string; prompt: string } | null>(null);
+  const [, setLocation] = useLocation();
+  const searchString = useSearch();
 
   const { data: projectData } = useProjects();
   const { data: providersData } = useChatProviders();
@@ -866,6 +870,40 @@ export default function ChatPage() {
       projectThreads.find((t: ChatThread) => t.agentRole === "builder")?.id ?? null,
     );
   }, [selectedProjectId, threadsData?.threads]);
+
+  // Handle incoming task from URL params (e.g. from Tasks page)
+  useEffect(() => {
+    if (!searchString) return;
+    const params = new URLSearchParams(searchString);
+    const projectIdParam = params.get("projectId");
+    const role = params.get("role");
+    const prompt = params.get("prompt");
+
+    if (projectIdParam && projects.length > 0) {
+      setSelectedProjectId(projectIdParam);
+    }
+    if (role && prompt) {
+      setPendingTaskPrompt({ role, prompt });
+    }
+
+    // Clear URL params after reading
+    if (params.toString()) {
+      setLocation("/chat", { replace: true });
+    }
+  }, [searchString, projects.length]);
+
+  // When workspace threads are ready and there's a pending task prompt, send it
+  useEffect(() => {
+    if (!pendingTaskPrompt) return;
+    const { role, prompt } = pendingTaskPrompt;
+    if (role === "builder" && builderThreadId) {
+      setBuilderHandoff(prompt);
+      setPendingTaskPrompt(null);
+    } else if (role === "architect" && architectThreadId) {
+      setArchitectHandoff(prompt);
+      setPendingTaskPrompt(null);
+    }
+  }, [pendingTaskPrompt, builderThreadId, architectThreadId]);
 
   async function handleStartWorkspace() {
     if (!selectedProjectId) return;
