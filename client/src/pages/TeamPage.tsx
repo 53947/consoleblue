@@ -56,48 +56,49 @@ export default function TeamPage() {
       <div className="space-y-3 mb-8">
         {activeUsers.map((user) => (
           <Card key={user.id}>
-            <CardContent className="flex items-center gap-4 py-4 px-5">
-              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                <span className="text-sm font-bold text-blue-600">
-                  {user.displayName?.[0]?.toUpperCase() ||
-                    user.email[0]?.toUpperCase()}
-                </span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm text-gray-900">
-                  {user.displayName || user.email}
-                </p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <Mail className="h-3 w-3 text-gray-400" />
-                  <span className="text-xs text-gray-500">{user.email}</span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <Select
-                  value={user.role}
-                  onValueChange={(role) =>
-                    updateRole.mutate({ id: user.id, role })
-                  }
-                >
-                  <SelectTrigger className="w-[120px] h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="editor">Editor</SelectItem>
-                    <SelectItem value="viewer">Viewer</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                {user.lastLogin && (
-                  <span className="text-xs text-gray-400 hidden md:block">
-                    Last login:{" "}
-                    {new Date(user.lastLogin).toLocaleDateString()}
+            <CardContent className="py-3 px-4 sm:py-4 sm:px-5">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                  <span className="text-xs sm:text-sm font-bold text-blue-600">
+                    {user.displayName?.[0]?.toUpperCase() ||
+                      user.email[0]?.toUpperCase()}
                   </span>
-                )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm text-gray-900 truncate">
+                    {user.displayName || user.email}
+                  </p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <Mail className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                    <span className="text-xs text-gray-500 truncate">{user.email}</span>
+                  </div>
+                </div>
 
-                <AlertDialog>
+                <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+                  <Select
+                    value={user.role}
+                    onValueChange={(role) =>
+                      updateRole.mutate({ id: user.id, role })
+                    }
+                  >
+                    <SelectTrigger className="w-[100px] sm:w-[120px] h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="editor">Editor</SelectItem>
+                      <SelectItem value="viewer">Viewer</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {user.lastLogin && (
+                    <span className="text-xs text-gray-400 hidden md:block">
+                      Last login:{" "}
+                      {new Date(user.lastLogin).toLocaleDateString()}
+                    </span>
+                  )}
+
+                  <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="ghost" size="sm">
                       <UserX className="h-4 w-4 text-red-500" />
@@ -124,6 +125,7 @@ export default function TeamPage() {
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -139,7 +141,7 @@ export default function TeamPage() {
           <div className="space-y-2">
             {inactiveUsers.map((user) => (
               <Card key={user.id} className="opacity-60">
-                <CardContent className="flex items-center gap-4 py-3 px-5">
+                <CardContent className="flex items-center gap-3 sm:gap-4 py-3 px-4 sm:px-5">
                   <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
                     <span className="text-xs font-bold text-gray-400">
                       {user.displayName?.[0]?.toUpperCase() ||
@@ -147,12 +149,12 @@ export default function TeamPage() {
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-gray-500 truncate">
                       {user.displayName || user.email}
                     </p>
-                    <span className="text-xs text-gray-400">{user.email}</span>
+                    <span className="text-xs text-gray-400 truncate block">{user.email}</span>
                   </div>
-                  <Badge variant="secondary" className="text-xs">
+                  <Badge variant="secondary" className="text-xs flex-shrink-0">
                     Inactive
                   </Badge>
                 </CardContent>

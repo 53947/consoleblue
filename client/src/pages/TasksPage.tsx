@@ -37,13 +37,13 @@ export default function TasksPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4 sm:mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Tasks</h1>
-          <div className="flex items-center gap-3 mt-1">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Tasks</h1>
+          <div className="flex items-center gap-2 sm:gap-3 mt-1">
             {stats && (
               <>
-                <span className="text-sm text-gray-500">
+                <span className="text-xs sm:text-sm text-gray-500">
                   {stats.total} total
                 </span>
                 {stats.overdue > 0 && (
@@ -80,9 +80,9 @@ export default function TasksPage() {
             </button>
           </div>
 
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="h-4 w-4 mr-1" />
-            New Task
+          <Button onClick={() => setCreateOpen(true)} size="sm" className="sm:size-default">
+            <Plus className="h-4 w-4 sm:mr-1" />
+            <span className="hidden sm:inline">New Task</span>
           </Button>
         </div>
       </div>

@@ -94,37 +94,37 @@ export default function ProjectDetailPage() {
             backgroundColor: project.colorBackground || `${project.colorPrimary || "#0000FF"}05`,
           }}
         >
-          <div className="flex items-start gap-4">
+          <div className="flex items-start gap-3 sm:gap-4">
             <SafeImage
               src={project.iconUrl || brandAssets.icon}
               alt={project.displayName}
-              className="w-16 h-16 rounded-xl object-contain"
+              className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl object-contain flex-shrink-0"
               fallbackInitials={project.displayName.slice(0, 2)}
               fallbackColor={project.colorPrimary || "#0000FF"}
             />
 
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-1">
-                <h1 className="text-2xl font-bold text-gray-900">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 sm:gap-3 mb-1 flex-wrap">
+                <h1 className="text-lg sm:text-2xl font-bold text-gray-900">
                   {project.displayName}
                 </h1>
                 <ProjectStatusBadge status={project.status} />
               </div>
 
               {project.description && (
-                <p className="text-gray-600 mb-3">{project.description}</p>
+                <p className="text-sm sm:text-base text-gray-600 mb-3">{project.description}</p>
               )}
 
-              <div className="flex items-center gap-4 text-sm text-gray-400">
+              <div className="flex items-center gap-3 sm:gap-4 text-xs sm:text-sm text-gray-400 flex-wrap">
                 {project.productionUrl && (
                   <a
                     href={project.productionUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1 hover:text-gray-600"
+                    className="flex items-center gap-1 hover:text-gray-600 truncate"
                   >
-                    <ExternalLink className="h-3.5 w-3.5" />
-                    {project.subdomainUrl || project.productionUrl}
+                    <ExternalLink className="h-3.5 w-3.5 flex-shrink-0" />
+                    <span className="truncate">{project.subdomainUrl || project.productionUrl}</span>
                   </a>
                 )}
                 {project.githubRepo && (
@@ -134,7 +134,7 @@ export default function ProjectDetailPage() {
                     rel="noopener noreferrer"
                     className="flex items-center gap-1 hover:text-gray-600"
                   >
-                    <Github className="h-3.5 w-3.5" />
+                    <Github className="h-3.5 w-3.5 flex-shrink-0" />
                     {project.githubRepo}
                   </a>
                 )}
@@ -147,12 +147,12 @@ export default function ProjectDetailPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
               <Dialog open={editOpen} onOpenChange={setEditOpen}>
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm">
-                    <Pencil className="h-4 w-4 mr-1" />
-                    Edit
+                    <Pencil className="h-4 w-4 sm:mr-1" />
+                    <span className="hidden sm:inline">Edit</span>
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-lg">
@@ -189,25 +189,25 @@ export default function ProjectDetailPage() {
 
         {/* Tabs */}
         <Tabs defaultValue="settings">
-          <TabsList className="mb-4">
-            <TabsTrigger value="settings" className="gap-1">
-              <Settings className="h-4 w-4" />
+          <TabsList className="mb-4 w-full overflow-x-auto flex justify-start">
+            <TabsTrigger value="settings" className="gap-1 text-xs sm:text-sm">
+              <Settings className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               Settings
             </TabsTrigger>
-            <TabsTrigger value="colors" className="gap-1">
-              <Palette className="h-4 w-4" />
+            <TabsTrigger value="colors" className="gap-1 text-xs sm:text-sm">
+              <Palette className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               Colors
             </TabsTrigger>
-            <TabsTrigger value="brand-assets" className="gap-1">
-              <Image className="h-4 w-4" />
-              Brand Assets
+            <TabsTrigger value="brand-assets" className="gap-1 text-xs sm:text-sm">
+              <Image className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Brand </span>Assets
             </TabsTrigger>
-            <TabsTrigger value="docs" className="gap-1">
-              <FileText className="h-4 w-4" />
+            <TabsTrigger value="docs" className="gap-1 text-xs sm:text-sm">
+              <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               Docs
             </TabsTrigger>
-            <TabsTrigger value="github" className="gap-1">
-              <FileCode className="h-4 w-4" />
+            <TabsTrigger value="github" className="gap-1 text-xs sm:text-sm">
+              <FileCode className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               GitHub
             </TabsTrigger>
           </TabsList>
@@ -456,7 +456,7 @@ function ProjectBrandAssets({ projectId, projectSlug }: { projectId: number; pro
             Every project needs <strong>4 brand images</strong> for consistent identity across the platform,
             browser tabs, social sharing, and documentation.
           </p>
-          <div className="grid grid-cols-2 gap-3 mt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
             {BRAND_IMAGE_SLOTS.map((slot) => (
               <div key={slot.key} className="bg-white/60 rounded-lg p-2.5">
                 <p className="font-semibold text-amber-900 text-xs">{slot.label}</p>
@@ -481,7 +481,7 @@ function ProjectBrandAssets({ projectId, projectSlug }: { projectId: number; pro
       </Card>
 
       {/* Upload Grid */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {BRAND_IMAGE_SLOTS.map((slot) => {
           const existing = assetsByTag[slot.key];
           return (
@@ -549,7 +549,7 @@ function ProjectBrandAssets({ projectId, projectSlug }: { projectId: number; pro
         </CardHeader>
         <CardContent>
           {data?.assets && data.assets.length > 0 ? (
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
               {data.assets.map((asset) => {
                 const isImage = asset.mimeType.startsWith("image/");
                 return (

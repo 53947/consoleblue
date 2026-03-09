@@ -24,8 +24,8 @@ export function TaskFilters({ filters, onChange }: TaskFiltersProps) {
   const { data: projectData } = useProjects();
 
   return (
-    <div className="flex items-center gap-3 flex-wrap">
-      <div className="relative flex-1 min-w-[200px] max-w-[300px]">
+    <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+      <div className="relative w-full sm:flex-1 sm:min-w-[200px] sm:max-w-[300px]">
         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
         <Input
           placeholder="Search tasks..."
@@ -41,7 +41,7 @@ export function TaskFilters({ filters, onChange }: TaskFiltersProps) {
           onChange({ ...filters, projectId: v === "all" ? undefined : v })
         }
       >
-        <SelectTrigger className="w-[160px] h-9">
+        <SelectTrigger className="w-[calc(50%-4px)] sm:w-[160px] h-9">
           <SelectValue placeholder="All Projects" />
         </SelectTrigger>
         <SelectContent>
@@ -60,7 +60,7 @@ export function TaskFilters({ filters, onChange }: TaskFiltersProps) {
           onChange({ ...filters, priority: v === "all" ? undefined : v })
         }
       >
-        <SelectTrigger className="w-[130px] h-9">
+        <SelectTrigger className="w-[calc(50%-4px)] sm:w-[130px] h-9">
           <SelectValue placeholder="All Priorities" />
         </SelectTrigger>
         <SelectContent>
@@ -78,7 +78,7 @@ export function TaskFilters({ filters, onChange }: TaskFiltersProps) {
           onChange({ ...filters, sort: v === "default" ? undefined : v })
         }
       >
-        <SelectTrigger className="w-[130px] h-9">
+        <SelectTrigger className="hidden sm:flex w-[130px] h-9">
           <SelectValue placeholder="Sort By" />
         </SelectTrigger>
         <SelectContent>

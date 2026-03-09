@@ -54,11 +54,11 @@ export default function LinkMonitorPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Link Monitor</h1>
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Link Monitor</h1>
+        <div className="flex items-center gap-2 sm:gap-3">
           <Select value={projectFilter} onValueChange={setProjectFilter}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="flex-1 sm:w-[180px]">
               <SelectValue placeholder="All Projects" />
             </SelectTrigger>
             <SelectContent>
@@ -198,7 +198,7 @@ export default function LinkMonitorPage() {
                       {check.responseTimeMs}ms
                     </span>
                   )}
-                  <span className="text-xs text-gray-400 w-36 text-right">
+                  <span className="text-xs text-gray-400 hidden sm:inline flex-shrink-0">
                     {new Date(check.checkedAt).toLocaleString()}
                   </span>
                 </div>

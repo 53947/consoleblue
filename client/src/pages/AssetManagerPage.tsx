@@ -68,11 +68,11 @@ export default function AssetManagerPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Assets</h1>
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Assets</h1>
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           <Select value={projectFilter} onValueChange={setProjectFilter}>
-            <SelectTrigger className="w-[160px]">
+            <SelectTrigger className="w-full sm:w-[160px]">
               <SelectValue placeholder="All Projects" />
             </SelectTrigger>
             <SelectContent>
@@ -86,7 +86,7 @@ export default function AssetManagerPage() {
           </Select>
 
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-[140px]">
+            <SelectTrigger className="w-full sm:w-[140px]">
               <SelectValue placeholder="All Types" />
             </SelectTrigger>
             <SelectContent>
@@ -105,7 +105,7 @@ export default function AssetManagerPage() {
             className="hidden"
             onChange={handleFileSelect}
           />
-          <Button onClick={() => fileInputRef.current?.click()}>
+          <Button onClick={() => fileInputRef.current?.click()} className="w-full sm:w-auto">
             <Upload className="h-4 w-4 mr-1" />
             Upload
           </Button>
@@ -114,7 +114,7 @@ export default function AssetManagerPage() {
 
       {/* Upload dropzone area */}
       <div
-        className="border-2 border-dashed border-gray-200 rounded-lg p-8 mb-6 text-center hover:border-gray-300 transition-colors cursor-pointer"
+        className="border-2 border-dashed border-gray-200 rounded-lg p-4 sm:p-8 mb-6 text-center hover:border-gray-300 transition-colors cursor-pointer"
         onClick={() => fileInputRef.current?.click()}
         onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
         onDrop={(e) => {

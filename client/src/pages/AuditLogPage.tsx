@@ -58,9 +58,9 @@ export default function AuditLogPage() {
         </div>
 
         {/* Filters */}
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center gap-2 sm:gap-3 mb-4 flex-wrap">
           <Select value={actionFilter} onValueChange={setActionFilter}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-[calc(50%-4px)] sm:w-40">
               <SelectValue placeholder="Action" />
             </SelectTrigger>
             <SelectContent>
@@ -74,7 +74,7 @@ export default function AuditLogPage() {
             </SelectContent>
           </Select>
           <Select value={entityFilter} onValueChange={setEntityFilter}>
-            <SelectTrigger className="w-44">
+            <SelectTrigger className="w-[calc(50%-4px)] sm:w-44">
               <SelectValue placeholder="Entity" />
             </SelectTrigger>
             <SelectContent>
@@ -108,7 +108,7 @@ export default function AuditLogPage() {
                     <div key={entry.id}>
                       <button
                         onClick={() => setExpandedId(isExpanded ? null : entry.id)}
-                        className="w-full flex items-center gap-4 px-4 py-3 hover:bg-gray-50 text-left"
+                        className="w-full flex items-center gap-2 sm:gap-4 px-3 sm:px-4 py-3 hover:bg-gray-50 text-left"
                       >
                         <Badge
                           className={`text-xs ${ACTION_COLORS[entry.action] || ""}`}
@@ -125,7 +125,7 @@ export default function AuditLogPage() {
                             )}
                           </span>
                         </div>
-                        <span className="text-xs text-gray-400 flex-shrink-0">
+                        <span className="text-xs text-gray-400 flex-shrink-0 hidden sm:inline">
                           {new Date(entry.createdAt).toLocaleString()}
                         </span>
                         {hasMetadata && (

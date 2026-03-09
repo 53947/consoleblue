@@ -28,16 +28,16 @@ export function TaskListView({ tasks, onTaskClick }: TaskListViewProps) {
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b bg-gray-50">
-            <th className="text-left px-4 py-2 font-medium text-gray-500">
+            <th className="text-left px-3 sm:px-4 py-2 font-medium text-gray-500">
               Title
             </th>
-            <th className="text-left px-4 py-2 font-medium text-gray-500 w-32">
+            <th className="text-left px-3 sm:px-4 py-2 font-medium text-gray-500 w-24 sm:w-32">
               Status
             </th>
-            <th className="text-left px-4 py-2 font-medium text-gray-500 w-28">
+            <th className="text-left px-3 sm:px-4 py-2 font-medium text-gray-500 w-20 sm:w-28 hidden sm:table-cell">
               Priority
             </th>
-            <th className="text-left px-4 py-2 font-medium text-gray-500 w-32">
+            <th className="text-left px-4 py-2 font-medium text-gray-500 w-32 hidden md:table-cell">
               Due Date
             </th>
           </tr>
@@ -55,17 +55,17 @@ export function TaskListView({ tasks, onTaskClick }: TaskListViewProps) {
                 onClick={() => onTaskClick(task)}
                 className="border-b hover:bg-gray-50 cursor-pointer transition-colors"
               >
-                <td className="px-4 py-2.5">
-                  <span className="font-medium text-gray-900">
+                <td className="px-3 sm:px-4 py-2.5">
+                  <span className="font-medium text-gray-900 text-xs sm:text-sm">
                     {task.title}
                   </span>
                 </td>
-                <td className="px-4 py-2.5">
+                <td className="px-3 sm:px-4 py-2.5">
                   <Badge className={`text-xs ${STATUS_COLORS[task.status]}`}>
                     {task.status.replace("_", " ")}
                   </Badge>
                 </td>
-                <td className="px-4 py-2.5">
+                <td className="px-3 sm:px-4 py-2.5 hidden sm:table-cell">
                   <span
                     className={`flex items-center gap-1 text-xs ${PRIORITY_COLORS[task.priority]}`}
                   >
@@ -73,7 +73,7 @@ export function TaskListView({ tasks, onTaskClick }: TaskListViewProps) {
                     {task.priority}
                   </span>
                 </td>
-                <td className="px-4 py-2.5">
+                <td className="px-4 py-2.5 hidden md:table-cell">
                   {task.dueDate ? (
                     <span
                       className={`flex items-center gap-1 text-xs ${

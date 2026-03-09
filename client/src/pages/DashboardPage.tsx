@@ -39,13 +39,13 @@ function StatCard({
 }) {
   return (
     <Card>
-      <CardContent className="flex items-center gap-4 py-4 px-5">
-        <div className={`p-2.5 rounded-lg ${color}`}>
-          <Icon className="h-5 w-5 text-white" />
+      <CardContent className="flex items-center gap-3 py-3 px-4 sm:gap-4 sm:py-4 sm:px-5">
+        <div className={`p-2 sm:p-2.5 rounded-lg ${color}`}>
+          <Icon className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
         </div>
         <div>
-          <p className="text-2xl font-bold text-gray-900">{value}</p>
-          <p className="text-sm text-gray-500">{label}</p>
+          <p className="text-xl sm:text-2xl font-bold text-gray-900">{value}</p>
+          <p className="text-xs sm:text-sm text-gray-500">{label}</p>
         </div>
       </CardContent>
     </Card>
@@ -74,7 +74,7 @@ export default function DashboardPage() {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <Skeleton className="h-8 w-48 mb-6" />
-        <div className="grid grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
           <Skeleton className="h-24" />
           <Skeleton className="h-24" />
           <Skeleton className="h-24" />
