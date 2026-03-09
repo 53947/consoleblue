@@ -16,9 +16,15 @@ const PORT = parseInt(process.env.PORT || "5000", 10);
 // Trust proxy (Replit reverse proxy)
 app.set("trust proxy", 1);
 
-// Body parsing
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true }));
+// Body parsing — skip JSON parsing for asset uploads (raw binary)
+app.use((req, res, next) => {
+  if (req.path === "/api/assets/upload") return next();
+  express.json({ limit: "10mb" })(req, res, next);
+});
+app.use((req, res, next) => {
+  if (req.path === "/api/assets/upload") return next();
+  express.urlencoded({ extended: true })(req, res, next);
+});
 
 // Session middleware (PostgreSQL-backed)
 const PgStore = connectPgSimple(session);

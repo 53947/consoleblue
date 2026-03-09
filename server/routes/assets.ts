@@ -57,9 +57,9 @@ export function createAssetRoutes(
   });
 
   // POST /api/assets/upload
+  // Note: express.json() is skipped for this route (see server/index.ts)
   router.post("/upload", async (req, res, next) => {
     try {
-      // Handle raw body upload with metadata in headers
       const filename = (req.headers["x-filename"] as string) || "upload";
       const mimeType =
         (req.headers["content-type"] as string) || "application/octet-stream";
@@ -72,46 +72,48 @@ export function createAssetRoutes(
         mimeType.startsWith("image/") ? "screenshot" : "document"
       );
 
-      // Collect body chunks
-      const chunks: Buffer[] = [];
-      req.on("data", (chunk) => chunks.push(chunk));
-      req.on("end", async () => {
-        try {
-          const buffer = Buffer.concat(chunks);
-          const safeName = filename
-            .replace(/[^a-zA-Z0-9._-]/g, "-")
-            .toLowerCase();
-          const storagePath = path.join(
-            uploadsDir,
-            `${Date.now()}-${safeName}`,
-          );
-
-          fs.writeFileSync(storagePath, buffer);
-
-          const [asset] = await db
-            .insert(assets)
-            .values({
-              projectId,
-              filename: safeName,
-              mimeType,
-              sizeBytes: buffer.length,
-              storagePath,
-              category: category as any,
-            })
-            .returning();
-
-          await auditService.log({
-            action: "create",
-            entityType: "asset",
-            entityId: asset.id,
-            newValue: { filename: safeName, mimeType, sizeBytes: buffer.length },
-          });
-
-          res.status(201).json({ asset });
-        } catch (err) {
-          next(err);
-        }
+      // Collect the raw body
+      const buffer = await new Promise<Buffer>((resolve, reject) => {
+        const chunks: Buffer[] = [];
+        req.on("data", (chunk: Buffer) => chunks.push(chunk));
+        req.on("end", () => resolve(Buffer.concat(chunks)));
+        req.on("error", reject);
       });
+
+      if (buffer.length === 0) {
+        return res.status(400).json({ error: "Empty file" });
+      }
+
+      const safeName = filename
+        .replace(/[^a-zA-Z0-9._-]/g, "-")
+        .toLowerCase();
+      const storagePath = path.join(
+        uploadsDir,
+        `${Date.now()}-${safeName}`,
+      );
+
+      fs.writeFileSync(storagePath, buffer);
+
+      const [asset] = await db
+        .insert(assets)
+        .values({
+          projectId,
+          filename: safeName,
+          mimeType,
+          sizeBytes: buffer.length,
+          storagePath,
+          category: category as any,
+        })
+        .returning();
+
+      await auditService.log({
+        action: "create",
+        entityType: "asset",
+        entityId: asset.id,
+        newValue: { filename: safeName, mimeType, sizeBytes: buffer.length },
+      });
+
+      res.status(201).json({ asset });
     } catch (err) {
       next(err);
     }
