@@ -93,6 +93,16 @@ export function TaskCreateDialog({
   async function captureScreenshot() {
     try {
       setIsCapturing(true);
+
+      // Hide the dialog so it doesn't appear in the screenshot
+      const dialogOverlay = document.querySelector("[data-radix-dialog-overlay]") as HTMLElement | null;
+      const dialogContent = document.querySelector("[data-radix-dialog-content]") as HTMLElement | null;
+      if (dialogOverlay) dialogOverlay.style.visibility = "hidden";
+      if (dialogContent) dialogContent.style.visibility = "hidden";
+
+      // Wait a frame for the browser to repaint without the dialog
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: { displaySurface: "window" } as any,
       });
@@ -105,13 +115,22 @@ export function TaskCreateDialog({
       canvas.height = video.videoHeight;
       canvas.getContext("2d")!.drawImage(video, 0, 0);
       track.stop();
+
+      // Restore dialog visibility
+      if (dialogOverlay) dialogOverlay.style.visibility = "";
+      if (dialogContent) dialogContent.style.visibility = "";
+
       const blob = await new Promise<Blob>((resolve) =>
         canvas.toBlob((b) => resolve(b!), "image/png"),
       );
       const file = new File([blob], `screenshot-${Date.now()}.png`, { type: "image/png" });
       addFiles([file]);
     } catch {
-      // User cancelled or browser doesn't support
+      // User cancelled or browser doesn't support — restore dialog visibility
+      const dialogOverlay = document.querySelector("[data-radix-dialog-overlay]") as HTMLElement | null;
+      const dialogContent = document.querySelector("[data-radix-dialog-content]") as HTMLElement | null;
+      if (dialogOverlay) dialogOverlay.style.visibility = "";
+      if (dialogContent) dialogContent.style.visibility = "";
     } finally {
       setIsCapturing(false);
     }
