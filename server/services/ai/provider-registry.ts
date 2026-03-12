@@ -22,7 +22,7 @@ const DEFAULT_MODELS: Record<string, string> = {
   google: "gemini-2.0-flash",
   deepseek: "deepseek-chat",
   groq: "llama-3.3-70b-versatile",
-  kimi: "moonshot-v1-8k",
+  kimi: "kimi-latest",
 };
 
 export function getProvider(providerType: AIProviderType): AIProvider {
