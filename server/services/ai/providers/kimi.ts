@@ -31,7 +31,9 @@ export class KimiProvider extends AIProvider {
         content = docText + "\n\n" + content;
       }
 
-      formattedMessages.push({ role: m.role, content });
+      if (content.trim()) {
+        formattedMessages.push({ role: m.role, content });
+      }
     }
 
     console.log(`[kimi] Requesting ${this.baseURL}/chat/completions, model: ${options.model}`);

@@ -124,7 +124,9 @@ export function createChatRoutes(
           getDefaultModel(providerConfig.providerType as AIProviderType);
 
         // Get conversation history (includes the user message we just added)
-        const history = await chatService.getConversationHistory(threadId);
+        // Filter out empty messages to avoid provider validation errors
+        const rawHistory = await chatService.getConversationHistory(threadId);
+        const history = rawHistory.filter((m) => m.content && m.content.trim());
 
         // Build role-specific system prompt with project context
         const project = thread.projectId
