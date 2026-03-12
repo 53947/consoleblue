@@ -143,12 +143,15 @@ export function createChatRoutes(
         let fullResponse = "";
 
         try {
+          console.log(`[chat] Sending to provider: ${providerConfig.providerType}, model: ${model}, messages: ${history.length}`);
           const provider = getProvider(providerConfig.providerType as AIProviderType);
 
           for await (const chunk of provider.chat(history, { model, systemPrompt })) {
             fullResponse += chunk;
             res.write(`data: ${JSON.stringify({ type: "chunk", content: chunk })}\n\n`);
           }
+
+          console.log(`[chat] Response complete, length: ${fullResponse.length}`);
 
           // Store the complete assistant message
           const assistantMessage = await chatService.addMessage(threadId, {
@@ -159,6 +162,7 @@ export function createChatRoutes(
           res.write(`data: ${JSON.stringify({ type: "done", message: assistantMessage })}\n\n`);
         } catch (streamError: any) {
           const errorMsg = streamError?.message || "AI provider error";
+          console.error(`[chat] Provider error (${providerConfig.providerType}):`, errorMsg);
           res.write(`data: ${JSON.stringify({ type: "error", error: errorMsg })}\n\n`);
         }
 

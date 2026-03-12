@@ -34,6 +34,8 @@ export class KimiProvider extends AIProvider {
       formattedMessages.push({ role: m.role, content });
     }
 
+    console.log(`[kimi] Requesting ${this.baseURL}/chat/completions, model: ${options.model}`);
+
     const response = await fetch(`${this.baseURL}/chat/completions`, {
       method: "POST",
       headers: {
@@ -50,8 +52,11 @@ export class KimiProvider extends AIProvider {
       }),
     });
 
+    console.log(`[kimi] Response status: ${response.status}, content-type: ${response.headers.get("content-type")}`);
+
     if (!response.ok) {
       const errorBody = await response.text();
+      console.error(`[kimi] Error response body:`, errorBody);
       let errorMessage: string;
       try {
         const parsed = JSON.parse(errorBody);
