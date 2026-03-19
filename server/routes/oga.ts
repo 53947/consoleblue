@@ -85,7 +85,7 @@ export function createOgaRoutes(
     // Build config response
     const assetMap: Record<string, string> = {};
     for (const a of assets) {
-      // Convert "favicon-16" to "favicon16" camelCase-ish key
+      // Convert "logo-image-16px" to "logoImage16px" camelCase key
       const camelKey = a.assetType.replace(/-([a-z0-9])/g, (_, c) =>
         c.toUpperCase(),
       );
@@ -170,12 +170,13 @@ export function createOgaRoutes(
       m.content=content;
     }
 
-    addLink("icon",a.favicon16,"16x16");
-    addLink("icon",a.favicon32,"32x32");
-    addLink("icon",a.faviconIco);
-    addLink("apple-touch-icon",a.appleTouchIcon,"180x180");
+    addLink("icon",a.logoImage16px,"16x16");
+    addLink("icon",a.logoImage32px,"32x32");
+    addLink("icon",a.logoImageIcon);
+    addLink("apple-touch-icon",a.logoImage180px,"180x180");
     setMeta("theme-color",a.themeColor);
     setMeta("og:image",a.ogImage,true);
+    if(a.siteName)setMeta("og:site_name",a.siteName,true);
     if(cfg.siteName)setMeta("og:site_name",cfg.siteName,true);
   }
 

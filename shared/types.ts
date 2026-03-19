@@ -550,19 +550,31 @@ export interface OgaConfigResponse {
   domain: string;
   siteName: string;
   assets: {
-    favicon16?: string;
-    favicon32?: string;
-    faviconIco?: string;
-    appleTouchIcon?: string;
-    ogImage?: string;
+    // Brand Identity
+    logoFullMark?: string;
+    logoImage?: string;
+    logoText?: string;
+    brandUrl?: string;
+    // Browser Assets
+    logoImage16px?: string;
+    logoImage32px?: string;
+    logoImage48px?: string;
+    logoImage180px?: string;
+    logoImage192px?: string;
+    logoImage512px?: string;
+    logoImageIcon?: string;
+    logoImageAvatar?: string;
     themeColor?: string;
-    manifestIcon192?: string;
-    manifestIcon512?: string;
+    // Header & Navigation
     headerLogo?: string;
     headerLogoDark?: string;
+    // Login & Auth
     loginLogo?: string;
     loginBackground?: string;
     loginAccentColor?: string;
+    // Social & SEO
+    ogImage?: string;
+    siteName?: string;
   };
   updatedAt: string;
 }

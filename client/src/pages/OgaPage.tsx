@@ -40,46 +40,72 @@ import {
   Eye,
   Check,
   AlertTriangle,
+  Info,
 } from "lucide-react";
 import type { OgaSite, OgaAsset } from "@shared/types";
 
-const ASSET_GROUPS = [
+interface AssetTypeConfig {
+  key: string;
+  label: string;
+  info: string;
+  accept?: string;
+  isColor?: boolean;
+  isText?: boolean;
+}
+
+const ASSET_GROUPS: {
+  label: string;
+  icon: typeof Globe;
+  types: AssetTypeConfig[];
+}[] = [
+  {
+    label: "Brand Identity",
+    icon: Palette,
+    types: [
+      { key: "logo-full-mark", label: "Logo Full Mark", info: "The official logo: image + text as URL. This is the master brand asset.", accept: "image/png,image/svg+xml" },
+      { key: "logo-image", label: "Logo Image", info: "Just the symbol/graphic without text. Source file, highest resolution.", accept: "image/png,image/svg+xml" },
+      { key: "logo-text", label: "Logo Text", info: "The styled brand name text without the image/symbol.", accept: "image/png,image/svg+xml" },
+      { key: "brand-url", label: "Brand URL", info: "The brand URL as plain text, no image (e.g. hostsblue.com).", isText: true },
+    ],
+  },
   {
     label: "Browser Assets",
     icon: Globe,
     types: [
-      { key: "favicon-16", label: "Favicon 16x16", accept: "image/png" },
-      { key: "favicon-32", label: "Favicon 32x32", accept: "image/png" },
-      { key: "favicon-ico", label: "Favicon ICO", accept: "image/x-icon,image/vnd.microsoft.icon" },
-      { key: "apple-touch-icon", label: "Apple Touch Icon", accept: "image/png" },
-      { key: "theme-color", label: "Theme Color", isColor: true },
-      { key: "manifest-icon-192", label: "PWA Icon 192x192", accept: "image/png" },
-      { key: "manifest-icon-512", label: "PWA Icon 512x512", accept: "image/png" },
+      { key: "logo-image-16px", label: "Logo Image 16px", info: "Browser tab icon. The tiny icon shown in the browser tab.", accept: "image/png" },
+      { key: "logo-image-32px", label: "Logo Image 32px", info: "Browser tab icon for retina/high-DPI screens.", accept: "image/png" },
+      { key: "logo-image-48px", label: "Logo Image 48px", info: "Windows taskbar shortcut icon.", accept: "image/png" },
+      { key: "logo-image-180px", label: "Logo Image 180px", info: "Apple touch icon. Shown when saved to iOS home screen.", accept: "image/png" },
+      { key: "logo-image-192px", label: "Logo Image 192px", info: "PWA icon for Android. Required for Progressive Web Apps.", accept: "image/png" },
+      { key: "logo-image-512px", label: "Logo Image 512px", info: "PWA splash screen icon. Largest size, used on app launch.", accept: "image/png" },
+      { key: "logo-image-icon", label: "Logo Image Icon", info: "General purpose icon. Used wherever a small brand icon is needed.", accept: "image/png,image/svg+xml" },
+      { key: "logo-image-avatar", label: "Logo Image Avatar", info: "Profile/avatar contexts. Social media profiles, team listings, etc.", accept: "image/png,image/jpeg" },
+      { key: "theme-color", label: "Theme Color", info: "Browser chrome color. Colors the address bar on mobile browsers.", isColor: true },
     ],
   },
   {
     label: "Header & Navigation",
     icon: Layout,
     types: [
-      { key: "header-logo", label: "Header Logo", accept: "image/png,image/svg+xml" },
-      { key: "header-logo-dark", label: "Header Logo (Dark)", accept: "image/png,image/svg+xml" },
+      { key: "header-logo", label: "Header Logo", info: "Logo displayed in the site's top navbar. Typically the full mark or image + text.", accept: "image/png,image/svg+xml" },
+      { key: "header-logo-dark", label: "Header Logo (Dark)", info: "Dark mode variant of the header logo for dark backgrounds.", accept: "image/png,image/svg+xml" },
     ],
   },
   {
     label: "Login & Auth Pages",
     icon: LogIn,
     types: [
-      { key: "login-logo", label: "Login Logo", accept: "image/png,image/svg+xml" },
-      { key: "login-background", label: "Login Background", accept: "image/png,image/jpeg,image/webp" },
-      { key: "login-accent-color", label: "Login Accent Color", isColor: true },
+      { key: "login-logo", label: "Login Logo", info: "Logo shown on the login/auth page. Usually the full mark, displayed prominently.", accept: "image/png,image/svg+xml" },
+      { key: "login-background", label: "Login Background", info: "Background image for login pages. Sets the visual tone for the auth experience.", accept: "image/png,image/jpeg,image/webp" },
+      { key: "login-accent-color", label: "Login Accent Color", info: "Primary brand color for login UI. Used on buttons, links, and highlights.", isColor: true },
     ],
   },
   {
     label: "Social & SEO",
     icon: Image,
     types: [
-      { key: "og-image", label: "OG Image (1200x630)", accept: "image/png,image/jpeg" },
-      { key: "site-name", label: "Site Name", isText: true },
+      { key: "og-image", label: "OG Image (1200x630)", info: "Social media share image. Shown when the site URL is shared on Facebook, Twitter, Slack, etc.", accept: "image/png,image/jpeg" },
+      { key: "site-name", label: "Site Name", info: "Display name used in social shares, bookmarks, and search results.", isText: true },
     ],
   },
 ];
@@ -116,10 +142,32 @@ function CopyButton({ text }: { text: string }) {
 
 // ── Asset Slot Component ──
 
+function InfoTip({ text }: { text: string }) {
+  const [show, setShow] = useState(false);
+  return (
+    <span className="relative inline-block">
+      <button
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}
+        onClick={() => setShow(!show)}
+        className="text-gray-400 hover:text-gray-600 transition-colors"
+      >
+        <Info className="h-3 w-3" />
+      </button>
+      {show && (
+        <span className="absolute z-50 left-5 top-1/2 -translate-y-1/2 w-56 px-2.5 py-1.5 text-[10px] text-gray-700 bg-white border border-gray-200 rounded-md shadow-lg leading-relaxed">
+          {text}
+        </span>
+      )}
+    </span>
+  );
+}
+
 function AssetSlot({
   siteId,
   assetType,
   label,
+  info,
   currentAsset,
   accept,
   isColor,
@@ -128,6 +176,7 @@ function AssetSlot({
   siteId: number;
   assetType: string;
   label: string;
+  info: string;
   currentAsset?: OgaAsset;
   accept?: string;
   isColor?: boolean;
@@ -189,7 +238,7 @@ function AssetSlot({
     return (
       <div className="flex items-center gap-3 py-2">
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-medium text-gray-700">{label}</p>
+          <p className="text-xs font-medium text-gray-700 flex items-center gap-1.5">{label} <InfoTip text={info} /></p>
         </div>
         <div className="flex items-center gap-2">
           <input
@@ -212,7 +261,7 @@ function AssetSlot({
     return (
       <div className="flex items-center gap-3 py-2">
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-medium text-gray-700">{label}</p>
+          <p className="text-xs font-medium text-gray-700 flex items-center gap-1.5">{label} <InfoTip text={info} /></p>
         </div>
         <div className="flex items-center gap-1.5">
           <Input
@@ -231,7 +280,7 @@ function AssetSlot({
   return (
     <div className="flex items-center gap-3 py-2">
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium text-gray-700">{label}</p>
+        <p className="text-xs font-medium text-gray-700 flex items-center gap-1.5">{label} <InfoTip text={info} /></p>
         {currentAsset && (
           <p className="text-[10px] text-gray-400 truncate">{currentAsset.value}</p>
         )}
@@ -462,10 +511,11 @@ function SiteDetail({
                 siteId={site.id}
                 assetType={type.key}
                 label={type.label}
+                info={type.info}
                 currentAsset={assetMap.get(type.key)}
                 accept={type.accept}
-                isColor={(type as any).isColor}
-                isText={(type as any).isText}
+                isColor={type.isColor}
+                isText={type.isText}
               />
             ))}
           </div>
